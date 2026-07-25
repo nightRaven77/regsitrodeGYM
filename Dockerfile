@@ -1,13 +1,19 @@
-FROM python:3.10-slim
+FROM python:3.11-slim
 
 WORKDIR /app
 
-# Copiar el requirements.txt desde la carpeta backend
+# Instalar dependencias
 COPY backend/requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copiar todo el resto del código del repositorio
+# Copiar el código fuente completo
 COPY . .
 
-# Comando de ejecución
-CMD uvicorn backend.app_server:app --host 0.0.0.0 --port ${PORT:-8000}
+# Configurar variable de entorno para rutas de Python
+ENV PYTHONPATH=/app
+
+# Exponer puerto por defecto
+EXPOSE 8000
+
+# Ejecutar la app a través del punto de entrada principal main:app
+CMD ["sh", "-c", "uvicorn main:app --host 0.0.0.0 --port ${PORT:-8000}"]
