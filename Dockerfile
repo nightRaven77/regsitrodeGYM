@@ -2,15 +2,12 @@ FROM python:3.10-slim
 
 WORKDIR /app
 
-# Instalar dependencias del sistema si son necesarias
-RUN apt-get update && apt-get install -y --no-install-recommends build-essential
-
-# Copiar e instalar los requerimientos de Python
-COPY requirements.txt .
+# Copiar el requirements.txt desde la carpeta backend
+COPY backend/requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copiar el resto del código
+# Copiar todo el resto del código del repositorio
 COPY . .
 
-# Comando para iniciar la aplicación usando la variable de entorno PORT de Railway
+# Comando de ejecución
 CMD uvicorn backend.app_server:app --host 0.0.0.0 --port ${PORT:-8000}
