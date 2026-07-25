@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>CenterFit - GymTracker</title>
+  <meta name="theme-color" content="#090d16">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="GymTracker">
+  <link rel="manifest" href="manifest.json">
+  <link rel="icon" type="image/png" sizes="192x192" href="assets/icon-192.png">
+  <link rel="apple-touch-icon" sizes="180x180" href="assets/apple-touch-icon.png">
+  <link rel="apple-touch-icon-precomposed" sizes="180x180" href="assets/apple-touch-icon-precomposed.png">
+  <link rel="shortcut icon" href="assets/apple-touch-icon.png">
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+
+  <!-- App Header -->
+  <header class="app-header">
+    <div class="brand">
+      <img src="assets/icon.jpg" alt="Logo" class="brand-logo-img">
+      <div class="brand-text">CenterFit <span style="font-size:12px; opacity:0.6; font-weight:400;">Tracker</span></div>
+    </div>
+    <div style="display: flex; align-items: center; gap: 8px;">
+      <button id="btnProfileSelect" class="profile-pill-btn">
+        <span id="activeProfileAvatar">👨‍🏽‍🦱</span>
+        <span id="activeProfileName">Erick</span>
+        <span style="font-size: 10px; opacity: 0.6;">▼</span>
+      </button>
+      <div id="headerStatus" class="header-status">
+        <div class="status-dot"></div>
+        <span id="statusText">Listo</span>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main View Container -->
+  <main class="main-container">
+
+    <!-- =================================================================== -->
+    <!-- TAB 1: ENTRENAR (Workout Session) -->
+    <!-- =================================================================== -->
+    <section id="tab-train" class="tab-content active">
+      
+      <!-- State 1: No active workout -->
+      <div id="workoutStartScreen">
+        <div class="workout-hero-card">
+          <h2 style="font-family: var(--font-heading); font-size: 24px; font-weight: 800; margin-bottom: 6px;">
+            ¡Hora de Entrenar! 💪
+          </h2>
+          <p style="color: var(--text-muted); font-size: 14px; margin-bottom: 18px;">
+            Selecciona tu rutina de hoy o inicia una sesión libre.
+          </p>
+
+          <div class="form-group" style="text-align: left;">
+            <label class="form-label">Seleccionar Rutina Activa:</label>
+            <select id="routineSelect" class="form-control">
+              <!-- Populated via JS -->
+            </select>
+          </div>
+
+          <div class="form-group" style="text-align: left;">
+            <label class="form-label">Seleccionar Día de Hoy:</label>
+            <select id="daySelect" class="form-control">
+              <!-- Populated via JS -->
+            </select>
+          </div>
+
+          <button id="btnStartWorkout" class="btn btn-primary mt-2">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+            Iniciar Sesión de Entrenamiento
+          </button>
+        </div>
+
+        <!-- Today Summary Card -->
+        <div class="card">
+          <div class="card-title">
+            <span>Ejercicios Programados</span>
+            <span id="todayExerciseCount" class="badge badge-pectoral">0 ejercicios</span>
+          </div>
+          <div id="todayExercisesList" style="display: flex; flex-direction: column; gap: 8px;">
+            <!-- Populated via JS -->
+          </div>
+        </div>
+      </div>
+
+      <!-- State 2: Active Workout in Progress -->
+      <div id="workoutActiveScreen" class="hidden">
+        <!-- Active Workout Session Header -->
+        <div class="workout-session-header">
+          <div>
+            <div id="activeRoutineDayName" style="font-weight: 800; font-size: 16px; color: var(--accent-cyan);">Día 1: Pierna</div>
+            <div id="workoutStartTime" style="font-size: 11px; color: var(--text-muted);">Inicio: --:--</div>
+          </div>
+          <div style="text-align: right;">
+            <div id="sessionTimerDisplay" class="workout-timer-display" style="font-size: 24px; margin: 0;">00:00:00</div>
+            <div style="display: flex; gap: 6px; margin-top: 4px;">
+              <button id="btnPauseWorkout" class="btn btn-secondary btn-sm">Pausar</button>
+              <button id="btnEndWorkout" class="btn btn-danger btn-sm">Finalizar</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Exercises List with Live Set Tracking -->
+        <div id="liveExercisesContainer">
+          <!-- Populated via JS -->
+        </div>
+      </div>
+
+    </section>
+
+    <!-- =================================================================== -->
+    <!-- TAB 2: RUTINAS (Routine Configurator) -->
+    <!-- =================================================================== -->
+    <section id="tab-routines" class="tab-content">
+      <div class="card">
+        <div class="card-title">
+          <span>Configurar Rutina</span>
+          <button id="btnNewRoutine" class="btn btn-primary btn-sm">+ Nueva</button>
+        </div>
+        <p style="color: var(--text-muted); font-size: 13px; margin-bottom: 14px;">
+          Personaliza los días de entrenamiento, grupo de músculos y ejercicios asignados.
+        </p>
+
+        <div id="routinesListContainer">
+          <!-- Populated via JS -->
+        </div>
+      </div>
+
+      <!-- Modal / Editor for Routine (Inline Card) -->
+      <div id="routineEditorCard" class="card hidden">
+        <div class="card-title">
+          <span id="editorTitle">Editar Rutina</span>
+          <button id="btnCloseEditor" class="btn btn-secondary btn-sm">✕ Cerrar</button>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Nombre de la Rutina:</label>
+          <input type="text" id="routineNameInput" class="form-control" placeholder="Ej: Rutina Hipertrofia 5 Días">
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Días de la Rutina:</label>
+          <div id="daysEditorContainer">
+            <!-- Day items rendered via JS -->
+          </div>
+          <button id="btnAddDayBtn" class="btn btn-secondary btn-sm mt-2">+ Agregar Día</button>
+        </div>
+
+        <button id="btnSaveRoutine" class="btn btn-primary mt-4">Guardar Rutina</button>
+      </div>
+    </section>
+
+    <!-- =================================================================== -->
+    <!-- TAB 3: CATÁLOGO DE EJERCICIOS (Database) -->
+    <!-- =================================================================== -->
+    <section id="tab-catalog" class="tab-content">
+      <div class="form-group">
+        <input type="text" id="catalogSearch" class="form-control" placeholder="🔍 Buscar ejercicio (ej. Prensa, Sentadilla)...">
+      </div>
+
+      <div class="filter-container" id="categoryFilters">
+        <button class="filter-pill active" data-cat="ALL">Todos</button>
+        <button class="filter-pill" data-cat="Pierna">Pierna</button>
+        <button class="filter-pill" data-cat="Pectoral">Pectoral</button>
+        <button class="filter-pill" data-cat="Espalda">Espalda</button>
+        <button class="filter-pill" data-cat="Hombro">Hombro</button>
+        <button class="filter-pill" data-cat="Bíceps">Bíceps</button>
+        <button class="filter-pill" data-cat="Tríceps">Tríceps</button>
+        <button class="filter-pill" data-cat="Abdomen">Abdomen</button>
+      </div>
+
+      <div id="catalogList" style="display: flex; flex-direction: column; gap: 10px;">
+        <!-- Populated via JS -->
+      </div>
+    </section>
+
+    <!-- =================================================================== -->
+    <!-- TAB 4: HISTORIAL Y REGISTROS -->
+    <!-- =================================================================== -->
+    <section id="tab-history" class="tab-content">
+      <div class="card">
+        <div class="card-title">
+          <span>Historial de Entrenamientos</span>
+        </div>
+        <div id="historyLogsContainer">
+          <!-- Populated via JS -->
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- =================================================================== -->
+  <!-- FLOATING REST TIMER BANNER -->
+  <!-- =================================================================== -->
+  <div id="restTimerBanner" class="rest-timer-banner hidden">
+    <div class="rest-timer-info">
+      <div style="font-size: 11px; color: var(--text-muted); text-transform: uppercase;">Descanso</div>
+      <div id="restTimerSeconds" class="rest-timer-seconds">60s</div>
+    </div>
+    <div class="rest-timer-controls">
+      <button id="btnRestMinus15" class="btn btn-secondary btn-sm">-15s</button>
+      <button id="btnRestPlus15" class="btn btn-secondary btn-sm">+15s</button>
+      <button id="btnRestSkip" class="btn btn-primary btn-sm">Saltar</button>
+    </div>
+  </div>
+
+  <!-- =================================================================== -->
+  <!-- BOTTOM NAVIGATION BAR -->
+  <!-- =================================================================== -->
+  <nav class="bottom-nav">
+    <button class="nav-item active" data-tab="tab-train">
+      <svg viewBox="0 0 24 24"><path d="M20.57 14.86L22 13.43 20.57 12 17 15.57 8.43 7 12 3.43 10.57 2 9.14 3.43 7.71 2 6.29 3.43 4.86 2 3.43 3.43 2 4.86l1.43 1.43L2 7.71l1.43 1.43L2 10.57 3.43 12 7 8.43 15.57 17 12 20.57 13.43 22l1.43-1.43 1.43 1.43 1.43-1.43 1.43 1.43 1.43-1.43L22 20.57l-1.43-1.43L22 17.71l-1.43-1.43z"/></svg>
+      <span>Entrenar</span>
+    </button>
+    <button class="nav-item" data-tab="tab-routines">
+      <svg viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-5 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z"/></svg>
+      <span>Rutinas</span>
+    </button>
+    <button class="nav-item" data-tab="tab-catalog">
+      <svg viewBox="0 0 24 24"><path d="M4 6H2v14c0 1.1.9 2 2 2h14v-2H4V6zm16-4H8c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 14H8V4h12v12z"/></svg>
+      <span>Catálogo</span>
+    </button>
+    <button class="nav-item" data-tab="tab-history">
+      <svg viewBox="0 0 24 24"><path d="M13 3c-4.97 0-9 4.03-9 9H1l3.89 3.89.07.14L9 12H6c0-3.87 3.13-7 7-7s7 3.13 7 7-3.13 7-7 7c-1.93 0-3.68-.79-4.94-2.06l-1.42 1.42C8.27 19.99 10.51 21 13 21c4.97 0 9-4.03 9-9s-4.03-9-9-9zm-1 5v5l4.28 2.54.72-1.21-3.5-2.08V8H12z"/></svg>
+      <span>Historial</span>
+    </button>
+  </nav>
+
+  <!-- =================================================================== -->
+  <!-- MODAL DE SELECCIÓN Y GESTIÓN DE PERFILES -->
+  <!-- =================================================================== -->
+  <div id="profileModal" class="modal-overlay hidden">
+    <div class="modal-card">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+        <h3 style="font-family: var(--font-heading); font-size: 18px; font-weight: 800;">Perfiles de Usuario</h3>
+        <button id="btnCloseProfileModal" class="btn btn-secondary btn-sm">✕</button>
+      </div>
+
+      <p style="color: var(--text-muted); font-size: 13px; margin-bottom: 14px;">
+        Selecciona quién está entrenando hoy para cargar sus rutinas e historial independiente.
+      </p>
+
+      <!-- Profiles List -->
+      <div id="profilesList" style="display: flex; flex-direction: column; gap: 10px; margin-bottom: 16px;">
+        <!-- Populated via JS -->
+      </div>
+
+      <!-- Add New Profile Section -->
+      <div style="border-top: 1px solid var(--border-color); padding-top: 14px;">
+        <label class="form-label">Crear Nuevo Perfil:</label>
+        <div style="display: flex; gap: 8px;">
+          <select id="newProfileAvatar" class="form-control" style="width: 70px; font-size: 18px; text-align: center;">
+            <option value="👨‍🏽‍🦱">👨‍🏽‍🦱</option>
+            <option value="👩🏻">👩🏻</option>
+            <option value="⚡">⚡</option>
+            <option value="🏋️‍♂️">🏋️‍♂️</option>
+            <option value="🏋️‍♀️">🏋️‍♀️</option>
+            <option value="🔥">🔥</option>
+            <option value="💪">💪</option>
+          </select>
+          <input type="text" id="newProfileName" class="form-control" placeholder="Nombre (ej: Pareja, Carlos...)">
+          <button id="btnCreateProfile" class="btn btn-primary btn-sm" style="white-space: nowrap;">Crear</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Load Data & Logic Scripts -->
+  <script src="js/exercises_data.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
