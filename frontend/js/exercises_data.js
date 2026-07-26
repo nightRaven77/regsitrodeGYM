@@ -95,37 +95,3 @@ const DEFAULT_EXERCISES_CATALOG = [
   { id: 'ab9', category: 'Abdomen', name: 'Crunch en Máquina', defaultSets: 1, defaultReps: 20, unit: 'reps' },
   { id: 'ab10', category: 'Abdomen', name: 'Abcoaster', defaultSets: 1, defaultReps: 20, unit: 'reps' }
 ];
-
-// Pre-configured Default Routine preset based on CenterFit mx (Initial 1 set default)
-const DEFAULT_PRESET_ROUTINE = {
-  id: 'preset_erick_centerfit',
-  name: 'Rutina Base CenterFit',
-  description: 'Rutina preconfigurada de CenterFit mx (1 serie inicial por ejercicio)',
-  days: [
-    {
-      dayName: 'Lunes - Pierna & Abdomen',
-      targetMuscles: ['Pierna', 'Abdomen'],
-      exerciseIds: ['p1', 'p2', 'p3', 'p4', 'p10', 'ab1']
-    },
-    {
-      dayName: 'Martes - Pectoral & Tríceps',
-      targetMuscles: ['Pectoral', 'Tríceps'],
-      exerciseIds: ['c5', 'c4', 'c2', 'c8', 'tr7', 'tr8']
-    },
-    {
-      dayName: 'Miércoles - Espalda & Bíceps',
-      targetMuscles: ['Espalda', 'Bíceps'],
-      exerciseIds: ['b2', 'b5', 'b7', 'b10', 'bi1', 'bi3']
-    },
-    {
-      dayName: 'Jueves - Hombro & Trapecio',
-      targetMuscles: ['Hombro'],
-      exerciseIds: ['s1', 's2', 's5', 's7', 's10']
-    },
-    {
-      dayName: 'Viernes - Pierna Glúteo & Enfoque',
-      targetMuscles: ['Pierna'],
-      exerciseIds: ['p8', 'p9', 'p11', 'p17', 'p18']
-    }
-  ]
-};

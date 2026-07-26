@@ -9,7 +9,7 @@ class UserModel(Base):
     email = Column(String, unique=True, index=True, nullable=False)
     hashed_password = Column(String, nullable=False)
     name = Column(String, nullable=False)
-    avatar = Column(String, default="👨‍🏽‍🦱")
+    avatar = Column(String, default="👤")
     created_at = Column(DateTime, default=datetime.utcnow)
 
 class RoutineModel(Base):
