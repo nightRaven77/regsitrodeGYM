@@ -189,6 +189,55 @@
           <!-- Populated via JS -->
         </div>
       </div>
+    <!-- =================================================================== -->
+    <!-- TAB 5: ANALÍTICA Y PROGRESO (Chart.js Dashboard) -->
+    <!-- =================================================================== -->
+    <section id="tab-analytics" class="tab-content">
+      <!-- PRs Summary Card -->
+      <div class="card">
+        <div class="card-title">
+          <span>🏆 Récords Personales (PRs)</span>
+        </div>
+        <div id="prsContainer" style="display: flex; gap: 8px; overflow-x: auto; padding-bottom: 4px;">
+          <!-- Populated via JS -->
+        </div>
+      </div>
+
+      <!-- Progressive Overload Chart -->
+      <div class="card">
+        <div class="card-title" style="flex-wrap: wrap; gap: 6px;">
+          <span>📈 Sobrecarga Progresiva</span>
+        </div>
+        <div class="form-group" style="margin-bottom: 10px;">
+          <label class="form-label">Seleccionar Ejercicio:</label>
+          <select id="analyticsExSelect" class="form-control">
+            <!-- Populated via JS -->
+          </select>
+        </div>
+        <div style="position: relative; height: 220px; width: 100%;">
+          <canvas id="overloadChartCanvas"></canvas>
+        </div>
+      </div>
+
+      <!-- Weekly Volume Chart -->
+      <div class="card">
+        <div class="card-title">
+          <span>📊 Volumen Semanal (kg)</span>
+        </div>
+        <div style="position: relative; height: 200px; width: 100%;">
+          <canvas id="weeklyVolumeCanvas"></canvas>
+        </div>
+      </div>
+
+      <!-- Muscle Group Distribution -->
+      <div class="card">
+        <div class="card-title">
+          <span>🎯 Enfoque por Grupo Muscular</span>
+        </div>
+        <div style="position: relative; height: 210px; width: 100%;">
+          <canvas id="muscleDistributionCanvas"></canvas>
+        </div>
+      </div>
     </section>
 
   </main>
@@ -227,6 +276,10 @@
     <button class="nav-item" data-tab="tab-history">
       <svg viewBox="0 0 24 24"><path d="M13 3c-4.97 0-9 4.03-9 9H1l3.89 3.89.07.14L9 12H6c0-3.87 3.13-7 7-7s7 3.13 7 7-3.13 7-7 7c-1.93 0-3.68-.79-4.94-2.06l-1.42 1.42C8.27 19.99 10.51 21 13 21c4.97 0 9-4.03 9-9s-4.03-9-9-9zm-1 5v5l4.28 2.54.72-1.21-3.5-2.08V8H12z"/></svg>
       <span>Historial</span>
+    </button>
+    <button class="nav-item" data-tab="tab-analytics">
+      <svg viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zM9 17H7v-7h2v7zm4 0h-2V7h2v10zm4 0h-2v-4h2v4z"/></svg>
+      <span>Progreso</span>
     </button>
   </nav>
 
@@ -282,8 +335,9 @@
     </div>
   </div>
 
-  <!-- Load Data & Logic Scripts -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="js/exercises_data.js"></script>
   <script src="js/app.js"></script>
+  <script src="js/analytics.js"></script>
 </body>
 </html>

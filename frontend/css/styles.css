@@ -468,6 +468,43 @@ body {
   color: var(--accent-cyan);
 }
 
+/* Unit Toggle (kg / lb) & Conversion Badge */
+.unit-toggle-group {
+  display: flex;
+  background: var(--bg-input);
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  padding: 2px;
+  gap: 2px;
+}
+
+.btn-unit-toggle {
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  font-size: 11px;
+  font-weight: 700;
+  padding: 3px 8px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.btn-unit-toggle.active {
+  background: var(--accent-cyan);
+  color: #000;
+  box-shadow: 0 0 8px rgba(0, 242, 254, 0.4);
+}
+
+.conversion-badge {
+  font-size: 10px;
+  color: var(--accent-green);
+  font-weight: 600;
+  text-align: center;
+  margin-top: 2px;
+  white-space: nowrap;
+}
+
 /* Add / Remove Set buttons in Live Workout */
 .set-controls-bar {
   display: flex;
