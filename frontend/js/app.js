@@ -102,21 +102,31 @@ async function fetchCloudState(pId) {
     const res = await fetch(`/api/state/${pId}`);
     if (res.ok) {
       const data = await res.json();
+      let updated = false;
+
       if (data.profiles && data.profiles.length > 0) {
         appState.profiles = data.profiles;
         localStorage.setItem('gym_profiles', JSON.stringify(appState.profiles));
+        updated = true;
       }
-      if (data.routines) {
+      if (data.routines && data.routines.length > 0) {
         appState.routines = data.routines;
         localStorage.setItem(`gym_routines_${pId}`, JSON.stringify(appState.routines));
+        updated = true;
       }
       if (data.weightsHistory) {
         appState.weightsHistory = data.weightsHistory;
         localStorage.setItem(`gym_weights_history_${pId}`, JSON.stringify(appState.weightsHistory));
+        updated = true;
       }
       if (data.workoutHistory) {
         appState.workoutHistory = data.workoutHistory;
         localStorage.setItem(`gym_workout_history_${pId}`, JSON.stringify(appState.workoutHistory));
+        updated = true;
+      }
+
+      if (updated) {
+        refreshCurrentProfileUI();
       }
     }
   } catch (e) {
