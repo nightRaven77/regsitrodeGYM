@@ -1,10 +1,11 @@
-const CACHE_NAME = 'gymtracker-v4';
+const CACHE_NAME = 'gymtracker-v5';
 const ASSETS = [
   './',
   './index.html',
   './css/styles.css',
   './js/exercises_data.js',
   './js/app.js',
+  './js/analytics.js',
   './manifest.json',
   './assets/icon.jpg',
   './assets/icon-192.png',
@@ -38,30 +39,33 @@ self.addEventListener('activate', (event) => {
   self.clients.claim();
 });
 
+// Network-first for JS/CSS/HTML so updates load instantly online, fallback to cache offline
 self.addEventListener('fetch', (event) => {
   if (event.request.method !== 'GET') return;
 
-  event.respondWith(
-    caches.match(event.request).then((cachedResponse) => {
-      if (cachedResponse) {
-        return cachedResponse;
-      }
+  // Ignore API requests from cache
+  if (event.request.url.includes('/api/')) return;
 
-      return fetch(event.request)
-        .then((networkResponse) => {
-          if (networkResponse && networkResponse.status === 200 && networkResponse.type === 'basic') {
-            const responseToCache = networkResponse.clone();
-            caches.open(CACHE_NAME).then((cache) => {
-              cache.put(event.request, responseToCache);
-            });
+  event.respondWith(
+    fetch(event.request)
+      .then((networkResponse) => {
+        if (networkResponse && networkResponse.status === 200) {
+          const responseToCache = networkResponse.clone();
+          caches.open(CACHE_NAME).then((cache) => {
+            cache.put(event.request, responseToCache);
+          });
+        }
+        return networkResponse;
+      })
+      .catch(() => {
+        return caches.match(event.request).then((cachedResponse) => {
+          if (cachedResponse) {
+            return cachedResponse;
           }
-          return networkResponse;
-        })
-        .catch(() => {
-          if (event.request.mode === 'navigate' || (event.request.headers.get('accept') && event.request.headers.get('accept').includes('text/html'))) {
-            return caches.match('./index.html') || caches.match('./');
+          if (event.request.headers.get('accept').includes('text/html')) {
+            return caches.match('./index.html');
           }
         });
-    })
+      })
   );
 });
