@@ -651,7 +651,8 @@ function renderLiveExercisesCards() {
     const sets = appState.activeSession.setsData[ex.id] || [];
     const allDone = sets.every(s => s.completed);
     const lastHistory = appState.weightsHistory[ex.id];
-    const lastWeightStr = lastHistory ? `(Último: ${lastHistory.weight} kg)` : '';
+    const unit = ex.weightUnit || 'kg';
+    const lastWeightStr = lastHistory ? `(Último: ${lastHistory.weight} ${lastHistory.unit || 'kg'})` : '';
 
     const card = document.createElement('div');
     card.className = `exercise-live-card ${allDone ? 'completed' : ''}`;
@@ -661,36 +662,64 @@ function renderLiveExercisesCards() {
           <span>${ex.name}</span>
           <span class="badge badge-${ex.category.toLowerCase()}" style="margin-left: 6px;">${ex.category}</span>
         </div>
-        <div style="font-size: 11px; color: var(--accent-cyan); font-weight: 500;">
-          ${lastWeightStr}
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <div style="font-size: 11px; color: var(--accent-cyan); font-weight: 500;">
+            ${lastWeightStr}
+          </div>
+          <div class="unit-toggle-group">
+            <button class="btn-unit-toggle ${unit === 'kg' ? 'active' : ''}" data-unit="kg">kg</button>
+            <button class="btn-unit-toggle ${unit === 'lb' ? 'active' : ''}" data-unit="lb">lb</button>
+          </div>
         </div>
       </div>
       <div id="setsContainer_${ex.id}"></div>
     `;
 
+    // Unit toggle buttons (kg vs lb) handler
+    card.querySelectorAll('.btn-unit-toggle').forEach(btn => {
+      btn.onclick = () => {
+        ex.weightUnit = btn.getAttribute('data-unit');
+        saveActiveSession();
+        renderLiveExercisesCards();
+      };
+    });
+
     liveExercisesContainer.appendChild(card);
     const setsContainer = card.querySelector(`#setsContainer_${ex.id}`);
 
     sets.forEach(set => {
+      const weightVal = set.weight || 0;
+      let comparativeText = '';
+      if (unit === 'kg') {
+        const lbVal = (weightVal * 2.20462).toFixed(1);
+        comparativeText = `≈ ${lbVal} lb`;
+      } else {
+        const kgVal = (weightVal * 0.453592).toFixed(1);
+        comparativeText = `≈ ${kgVal} kg`;
+      }
+
       const row = document.createElement('div');
       row.className = 'set-row';
-      row.style.gridTemplateColumns = '32px 1.2fr 1.4fr 44px';
+      row.style.gridTemplateColumns = '32px 1.3fr 1.3fr 44px';
       row.innerHTML = `
         <div class="set-number">S${set.setNum}</div>
         
-        <!-- Weight Input + Stepper -->
+        <!-- Weight Input + Stepper + Comparative Conversion -->
         <div class="set-input-group">
-          <label class="set-input-label">Peso (kg)</label>
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2px;">
+            <label class="set-input-label">Peso (${unit})</label>
+            <span class="conversion-badge">${comparativeText}</span>
+          </div>
           <div class="stepper-group">
             <button class="btn-step btn-weight-minus" ${set.completed ? 'disabled' : ''}>-</button>
-            <input type="number" step="0.5" class="set-input weight-input" value="${set.weight}" ${set.completed ? 'disabled' : ''}>
+            <input type="number" step="${unit === 'lb' ? '5' : '0.5'}" class="set-input weight-input" value="${set.weight}" ${set.completed ? 'disabled' : ''}>
             <button class="btn-step btn-weight-plus" ${set.completed ? 'disabled' : ''}>+</button>
           </div>
         </div>
 
         <!-- Reps Input + Stepper -->
         <div class="set-input-group">
-          <label class="set-input-label">Reps (${ex.unit})</label>
+          <label class="set-input-label" style="margin-bottom: 2px;">Reps (${ex.unit})</label>
           <div class="stepper-group">
             <button class="btn-step btn-reps-minus" ${set.completed ? 'disabled' : ''}>-</button>
             <input type="number" class="set-input reps-input" value="${set.actualReps}" ${set.completed ? 'disabled' : ''}>
@@ -706,21 +735,34 @@ function renderLiveExercisesCards() {
       const weightInput = row.querySelector('.weight-input');
       const repsInput = row.querySelector('.reps-input');
       const btnCheck = row.querySelector('.btn-check-set');
+      const conversionBadge = row.querySelector('.conversion-badge');
 
       const btnWeightMinus = row.querySelector('.btn-weight-minus');
       const btnWeightPlus = row.querySelector('.btn-weight-plus');
       const btnRepsMinus = row.querySelector('.btn-reps-minus');
       const btnRepsPlus = row.querySelector('.btn-reps-plus');
 
+      const updateConversion = (w) => {
+        if (unit === 'kg') {
+          conversionBadge.textContent = `≈ ${(w * 2.20462).toFixed(1)} lb`;
+        } else {
+          conversionBadge.textContent = `≈ ${(w * 0.453592).toFixed(1)} kg`;
+        }
+      };
+
+      const weightStep = unit === 'lb' ? 5 : 2.5;
+
       btnWeightMinus.onclick = () => {
-        set.weight = Math.max(0, parseFloat((set.weight - 2.5).toFixed(1)));
+        set.weight = Math.max(0, parseFloat((set.weight - weightStep).toFixed(1)));
         weightInput.value = set.weight;
+        updateConversion(set.weight);
         saveActiveSession();
       };
 
       btnWeightPlus.onclick = () => {
-        set.weight = parseFloat((set.weight + 2.5).toFixed(1));
+        set.weight = parseFloat((set.weight + weightStep).toFixed(1));
         weightInput.value = set.weight;
+        updateConversion(set.weight);
         saveActiveSession();
       };
 
@@ -736,8 +778,9 @@ function renderLiveExercisesCards() {
         saveActiveSession();
       };
 
-      weightInput.addEventListener('change', (e) => {
+      weightInput.addEventListener('input', (e) => {
         set.weight = parseFloat(e.target.value) || 0;
+        updateConversion(set.weight);
         saveActiveSession();
       });
 
@@ -752,15 +795,13 @@ function renderLiveExercisesCards() {
         set.completed = !set.completed;
 
         if (set.completed) {
-          // Update last known weight memory for this exercise
           appState.weightsHistory[ex.id] = {
             weight: set.weight,
+            unit: unit,
             reps: set.actualReps,
             date: new Date().toISOString()
           };
           saveWeightsHistory();
-
-          // Start 60s Rest Timer
           triggerRestTimer(60);
         }
 
@@ -859,28 +900,38 @@ function confirmEndWorkout() {
   let totalVolumeKg = 0;
 
   Object.keys(appState.activeSession.setsData).forEach(exId => {
+    const ex = appState.activeSession.exercises.find(e => e.id === exId);
+    const unit = ex ? (ex.weightUnit || 'kg') : 'kg';
     const sets = appState.activeSession.setsData[exId];
     sets.forEach(set => {
       if (set.completed) {
         totalSetsCompleted += 1;
-        totalVolumeKg += (set.weight * set.actualReps);
+        const weightKg = (unit === 'lb') ? (set.weight * 0.453592) : set.weight;
+        totalVolumeKg += (weightKg * set.actualReps);
       }
     });
   });
 
-  // Extract detailed sets data for each exercise
+  // Extract detailed sets data for each exercise with unit metadata
   const detailedExercises = appState.activeSession.exercises.map(ex => {
+    const unit = ex.weightUnit || 'kg';
     const completedSets = (appState.activeSession.setsData[ex.id] || [])
       .filter(s => s.completed)
-      .map(s => ({
-        setNum: s.setNum,
-        weight: s.weight,
-        actualReps: s.actualReps
-      }));
+      .map(s => {
+        const weightKg = (unit === 'lb') ? (s.weight * 0.453592) : s.weight;
+        return {
+          setNum: s.setNum,
+          weight: s.weight,
+          weightUnit: unit,
+          weightKg: parseFloat(weightKg.toFixed(1)),
+          actualReps: s.actualReps
+        };
+      });
     return {
       name: ex.name,
       category: ex.category,
       unit: ex.unit || 'reps',
+      weightUnit: unit,
       sets: completedSets
     };
   }).filter(ex => ex.sets.length > 0);
@@ -892,7 +943,7 @@ function confirmEndWorkout() {
     dayName: appState.activeSession.dayName,
     durationSeconds: appState.activeSession.elapsedSeconds,
     totalSets: totalSetsCompleted,
-    totalVolumeKg: totalVolumeKg,
+    totalVolumeKg: Math.round(totalVolumeKg),
     exercisesSummary: appState.activeSession.exercises.map(ex => ({
       name: ex.name,
       category: ex.category,
@@ -953,7 +1004,7 @@ function renderCatalog(category = 'ALL', searchQuery = '') {
     card.style.padding = '12px 16px';
 
     const lastHistory = appState.weightsHistory[ex.id];
-    const lastWeightStr = lastHistory ? `${lastHistory.weight} kg (Última vez)` : 'Sin registro de peso';
+    const lastWeightStr = lastHistory ? `${lastHistory.weight} ${lastHistory.unit || 'kg'} (Última vez)` : 'Sin registro de peso';
 
     card.innerHTML = `
       <div style="display: flex; justify-content: space-between; align-items: center;">
@@ -1049,9 +1100,13 @@ function renderHistory() {
             const exBlock = document.createElement('div');
             exBlock.className = 'history-detail-exercise';
             
-            const setsHtml = ex.sets.map(s => 
-              `<span class="history-set-tag">S${s.setNum}: <strong>${s.weight} kg</strong> × ${s.actualReps} ${ex.unit || 'reps'}</span>`
-            ).join('');
+            const setsHtml = ex.sets.map(s => {
+              const u = s.weightUnit || 'kg';
+              const altUnitText = (u === 'lb') 
+                ? `(≈ ${(s.weight * 0.453592).toFixed(1)} kg)` 
+                : `(≈ ${(s.weight * 2.20462).toFixed(1)} lb)`;
+              return `<span class="history-set-tag">S${s.setNum}: <strong>${s.weight} ${u}</strong> <span style="font-size:10px; color:var(--accent-green);">${altUnitText}</span> × ${s.actualReps} ${ex.unit || 'reps'}</span>`;
+            }).join('');
 
             exBlock.innerHTML = `
               <div style="display: flex; justify-content: space-between; align-items: center;">
