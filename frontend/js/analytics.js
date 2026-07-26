@@ -15,34 +15,46 @@ function calculate1RM(weight, reps) {
 }
 
 function initAnalytics() {
-  const analyticsExSelect = document.getElementById('analyticsExSelect');
-  if (!analyticsExSelect) return;
+  try {
+    const analyticsExSelect = document.getElementById('analyticsExSelect');
+    if (!analyticsExSelect) return;
 
-  // Populate exercise selector for progressive overload chart
-  analyticsExSelect.innerHTML = '';
-  DEFAULT_EXERCISES_CATALOG.forEach(ex => {
-    const option = document.createElement('option');
-    option.value = ex.id;
-    option.textContent = `${ex.name} (${ex.category})`;
-    analyticsExSelect.appendChild(option);
-  });
+    // Populate exercise selector for progressive overload chart
+    analyticsExSelect.innerHTML = '';
+    DEFAULT_EXERCISES_CATALOG.forEach(ex => {
+      const option = document.createElement('option');
+      option.value = ex.id;
+      option.textContent = `${ex.name} (${ex.category})`;
+      analyticsExSelect.appendChild(option);
+    });
 
-  analyticsExSelect.onchange = (e) => {
-    renderOverloadChart(e.target.value);
-  };
+    analyticsExSelect.onchange = (e) => {
+      try {
+        renderOverloadChart(e.target.value);
+      } catch (err) {
+        console.error('Error on overload chart select:', err);
+      }
+    };
 
-  renderAnalyticsDashboard();
+    renderAnalyticsDashboard();
+  } catch (err) {
+    console.error('Error initializing analytics:', err);
+  }
 }
 
 function renderAnalyticsDashboard() {
-  renderPRsSummary();
-  
-  const analyticsExSelect = document.getElementById('analyticsExSelect');
-  const selectedExId = analyticsExSelect ? analyticsExSelect.value : DEFAULT_EXERCISES_CATALOG[0].id;
-  renderOverloadChart(selectedExId);
-  
-  renderWeeklyVolumeChart();
-  renderMuscleDistributionChart();
+  try {
+    renderPRsSummary();
+    
+    const analyticsExSelect = document.getElementById('analyticsExSelect');
+    const selectedExId = (analyticsExSelect && analyticsExSelect.value) ? analyticsExSelect.value : DEFAULT_EXERCISES_CATALOG[0].id;
+    renderOverloadChart(selectedExId);
+    
+    renderWeeklyVolumeChart();
+    renderMuscleDistributionChart();
+  } catch (err) {
+    console.error('Error rendering analytics dashboard:', err);
+  }
 }
 
 // 1. Personal Records (PRs) Cards
