@@ -19,44 +19,65 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# 1. Initialize SQLAlchemy / Supabase PostgreSQL if DATABASE_URL is configured
+try:
+    from backend.database import engine, Base
+    from backend.models import UserModel, RoutineModel, WorkoutLogModel
+    Base.metadata.create_all(bind=engine)
+    print("✅ Tablas de SQLAlchemy / Supabase inicializadas correctamente.")
+except Exception as e:
+    print(f"ℹ️ Advertencia inicializando SQLAlchemy/Supabase: {e}")
+
+# 2. Initialize local SQLite fallback
 def init_db():
-    conn = sqlite3.connect(DB_FILE)
-    cursor = conn.cursor()
-    cursor.execute("""
-        CREATE TABLE IF NOT EXISTS profiles (
-            id TEXT PRIMARY KEY,
-            name TEXT NOT NULL,
-            avatar TEXT NOT NULL
-        )
-    """)
-    cursor.execute("""
-        CREATE TABLE IF NOT EXISTS profile_data (
-            profile_id TEXT PRIMARY KEY,
-            routines_json TEXT,
-            weights_json TEXT,
-            history_json TEXT,
-            active_session_json TEXT,
-            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        )
-    """)
-    
-    cursor.execute("SELECT COUNT(*) FROM profiles")
-    if cursor.fetchone()[0] == 0:
-        cursor.execute("INSERT INTO profiles VALUES ('prof_erick', 'Erick', '👨‍🏽‍🦱')")
-        cursor.execute("INSERT INTO profiles VALUES ('prof_pareja', 'Pareja', '👩🏻')")
-    
-    conn.commit()
-    conn.close()
+    try:
+        conn = sqlite3.connect(DB_FILE)
+        cursor = conn.cursor()
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS profiles (
+                id TEXT PRIMARY KEY,
+                name TEXT NOT NULL,
+                avatar TEXT NOT NULL
+            )
+        """)
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS profile_data (
+                profile_id TEXT PRIMARY KEY,
+                routines_json TEXT,
+                weights_json TEXT,
+                history_json TEXT,
+                active_session_json TEXT,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+        
+        cursor.execute("SELECT COUNT(*) FROM profiles")
+        if cursor.fetchone()[0] == 0:
+            cursor.execute("INSERT INTO profiles VALUES ('prof_erick', 'Erick', '👨‍🏽‍🦱')")
+            cursor.execute("INSERT INTO profiles VALUES ('prof_pareja', 'Pareja', '👩🏻')")
+        
+        conn.commit()
+        conn.close()
+    except Exception as e:
+        print(f"ℹ️ Warning SQLite local: {e}")
 
 init_db()
 
 class SyncPayload(BaseModel):
     profiles: list
     activeProfileId: str
-    routines: list
-    weightsHistory: dict
-    workoutHistory: list
+    routines: list | None = None
+    weightsHistory: dict | None = None
+    workoutHistory: list | None = None
     activeSession: dict | None = None
+
+@app.get("/api/health")
+def health_check():
+    return {
+        "status": "online",
+        "app": "CenterFit GymTracker API v2.0",
+        "database": "PostgreSQL/Supabase" if os.environ.get("DATABASE_URL") else "SQLite Local"
+    }
 
 @app.get("/api/state/{profile_id}")
 def get_profile_state(profile_id: str):
@@ -98,34 +119,22 @@ def sync_profile_state(profile_id: str, payload: SyncPayload):
         cursor.execute("INSERT OR REPLACE INTO profiles (id, name, avatar) VALUES (?, ?, ?)", (p['id'], p['name'], p['avatar']))
     
     cursor.execute("""
-        INSERT INTO profile_data (profile_id, routines_json, weights_json, history_json, active_session_json)
-        VALUES (?, ?, ?, ?, ?)
-        ON CONFLICT(profile_id) DO UPDATE SET
-            routines_json=excluded.routines_json,
-            weights_json=excluded.weights_json,
-            history_json=excluded.history_json,
-            active_session_json=excluded.active_session_json,
-            updated_at=CURRENT_TIMESTAMP
+        INSERT OR REPLACE INTO profile_data (profile_id, routines_json, weights_json, history_json, active_session_json, updated_at)
+        VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
     """, (
         profile_id,
-        json.dumps(payload.routines),
-        json.dumps(payload.weightsHistory),
-        json.dumps(payload.workoutHistory),
-        json.dumps(payload.activeSession)
+        json.dumps(payload.routines) if payload.routines is not None else None,
+        json.dumps(payload.weightsHistory) if payload.weightsHistory is not None else None,
+        json.dumps(payload.workoutHistory) if payload.workoutHistory is not None else None,
+        json.dumps(payload.activeSession) if payload.activeSession is not None else None
     ))
     
     conn.commit()
     conn.close()
-    return {"status": "ok", "message": "Synced successfully"}
+    
+    return {"status": "synced", "profile_id": profile_id}
 
-# Locate frontend directory dynamically
-FRONTEND_DIR = os.path.join(BASE_DIR, "frontend")
-if not os.path.exists(FRONTEND_DIR):
-    FRONTEND_DIR = os.path.join(BASE_DIR, "..", "frontend")
-
-app.mount("/", StaticFiles(directory=FRONTEND_DIR, html=True), name="static")
-
-if __name__ == "__main__":
-    import uvicorn
-    port = int(os.environ.get("PORT", 8000))
-    uvicorn.run("app_server:app", host="0.0.0.0", port=port, reload=True)
+# Mount static frontend files for production serving
+frontend_path = os.path.join(BASE_DIR, "frontend")
+if os.path.exists(frontend_path):
+    app.mount("/", StaticFiles(directory=frontend_path, html=True), name="frontend")
