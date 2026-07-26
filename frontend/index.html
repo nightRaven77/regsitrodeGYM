@@ -266,6 +266,19 @@
           <button id="btnCreateProfile" class="btn btn-primary btn-sm" style="white-space: nowrap;">Crear</button>
         </div>
       </div>
+
+      <!-- Backup & Restore Section -->
+      <div style="border-top: 1px solid var(--border-color); margin-top: 14px; padding-top: 14px;">
+        <label class="form-label">💾 Respaldar y Restaurar Rutinas:</label>
+        <p style="font-size: 11px; color: var(--text-muted); margin-bottom: 8px;">
+          Descarga una copia de seguridad de tus rutinas e historial para evitar perderlas si borras la caché.
+        </p>
+        <div style="display: flex; gap: 8px;">
+          <button id="btnExportBackup" class="btn btn-secondary btn-sm" style="width: 50%;">📦 Exportar JSON</button>
+          <button id="btnImportBackup" class="btn btn-secondary btn-sm" style="width: 50%;">📥 Importar JSON</button>
+          <input type="file" id="importFileInput" accept=".json" class="hidden">
+        </div>
+      </div>
     </div>
   </div>
 

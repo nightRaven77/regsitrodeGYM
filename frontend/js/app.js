@@ -282,6 +282,82 @@ function setupProfileUI() {
     switchProfile(newProfile.id);
     profileModal.classList.add('hidden');
   });
+
+  // Backup Export JSON handler
+  const btnExportBackup = document.getElementById('btnExportBackup');
+  const btnImportBackup = document.getElementById('btnImportBackup');
+  const importFileInput = document.getElementById('importFileInput');
+
+  btnExportBackup.onclick = () => {
+    const backupData = {
+      appName: "GymTracker",
+      version: "2.0",
+      exportDate: new Date().toISOString(),
+      profiles: appState.profiles,
+      activeProfileId: appState.activeProfileId,
+      profileDataMap: {}
+    };
+
+    appState.profiles.forEach(p => {
+      const pId = p.id;
+      backupData.profileDataMap[pId] = {
+        routines: JSON.parse(localStorage.getItem(`gym_routines_${pId}`) || '[]'),
+        weightsHistory: JSON.parse(localStorage.getItem(`gym_weights_history_${pId}`) || '{}'),
+        workoutHistory: JSON.parse(localStorage.getItem(`gym_workout_history_${pId}`) || '[]'),
+        activeSession: JSON.parse(localStorage.getItem(`gym_active_session_${pId}`) || 'null')
+      };
+    });
+
+    const blob = new Blob([JSON.stringify(backupData, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `gymtracker_backup_${new Date().toISOString().slice(0, 10)}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  btnImportBackup.onclick = () => importFileInput.click();
+
+  importFileInput.onchange = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      try {
+        const data = JSON.parse(event.target.result);
+        if (!data.profiles || !data.profileDataMap) {
+          alert('Archivo de respaldo no válido.');
+          return;
+        }
+
+        appState.profiles = data.profiles;
+        saveProfiles();
+
+        Object.keys(data.profileDataMap).forEach(pId => {
+          const pData = data.profileDataMap[pId];
+          if (pData.routines) localStorage.setItem(`gym_routines_${pId}`, JSON.stringify(pData.routines));
+          if (pData.weightsHistory) localStorage.setItem(`gym_weights_history_${pId}`, JSON.stringify(pData.weightsHistory));
+          if (pData.workoutHistory) localStorage.setItem(`gym_workout_history_${pId}`, JSON.stringify(pData.workoutHistory));
+          if (pData.activeSession) localStorage.setItem(`gym_active_session_${pId}`, JSON.stringify(pData.activeSession));
+        });
+
+        if (data.activeProfileId) {
+          appState.activeProfileId = data.activeProfileId;
+          localStorage.setItem('gym_active_profile_id', data.activeProfileId);
+        }
+
+        loadActiveProfileData();
+        refreshCurrentProfileUI();
+        profileModal.classList.add('hidden');
+        alert('¡Copia de seguridad restaurada con éxito!');
+      } catch (err) {
+        alert('Error al leer el archivo JSON de respaldo.');
+      }
+    };
+    reader.readAsText(file);
+  };
 }
 
 function updateHeaderProfilePill() {
@@ -685,6 +761,41 @@ function renderLiveExercisesCards() {
 
       setsContainer.appendChild(row);
     });
+
+    // Controls bar to Add / Remove Series dynamically
+    const controlsBar = document.createElement('div');
+    controlsBar.className = 'set-controls-bar';
+    controlsBar.innerHTML = `
+      <button class="btn-add-set">+ Agregar Serie</button>
+      ${sets.length > 1 ? '<button class="btn-remove-set">- Eliminar Serie</button>' : ''}
+    `;
+
+    controlsBar.querySelector('.btn-add-set').onclick = () => {
+      const lastSet = sets[sets.length - 1];
+      const newSetNum = sets.length + 1;
+      sets.push({
+        setNum: newSetNum,
+        targetReps: lastSet ? lastSet.targetReps : ex.defaultReps,
+        actualReps: lastSet ? lastSet.actualReps : ex.defaultReps,
+        weight: lastSet ? lastSet.weight : 0,
+        completed: false
+      });
+      saveActiveSession();
+      renderLiveExercisesCards();
+    };
+
+    const btnRemSet = controlsBar.querySelector('.btn-remove-set');
+    if (btnRemSet) {
+      btnRemSet.onclick = () => {
+        if (sets.length > 1) {
+          sets.pop();
+          saveActiveSession();
+          renderLiveExercisesCards();
+        }
+      };
+    }
+
+    card.appendChild(controlsBar);
   });
 }
 
