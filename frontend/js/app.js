@@ -240,6 +240,10 @@ function refreshCurrentProfileUI() {
   renderHistory();
   renderRoutinesList();
 
+  if (typeof initAnalytics === 'function') {
+    initAnalytics();
+  }
+
   if (appState.activeSession) {
     resumeActiveSessionUI();
   } else {
@@ -455,7 +459,12 @@ function setupNavigation() {
       tabContents.forEach(t => t.classList.remove('active'));
 
       item.classList.add('active');
-      document.getElementById(targetTab).classList.add('active');
+      const targetEl = document.getElementById(targetTab);
+      if (targetEl) targetEl.classList.add('active');
+
+      if (targetTab === 'tab-analytics' && typeof renderAnalyticsDashboard === 'function') {
+        renderAnalyticsDashboard();
+      }
     });
   });
 }
