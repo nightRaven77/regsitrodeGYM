@@ -25,11 +25,12 @@ share/python-wheels/
 .installed.cfg
 *.egg
 
-# Virtual environments
+# Virtual environments & test caches
 venv/
 .venv/
 env/
 ENV/
+.pytest_cache/
 
 # SQLite databases
 *.db
