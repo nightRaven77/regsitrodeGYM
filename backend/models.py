@@ -1,6 +1,5 @@
 from datetime import datetime
 from sqlalchemy import Column, String, Integer, Float, DateTime, ForeignKey, Text, JSON
-from sqlalchemy.orm import relationship
 from backend.database import Base
 
 class UserModel(Base):
@@ -17,22 +16,32 @@ class RoutineModel(Base):
     __tablename__ = "routines"
 
     id = Column(String, primary_key=True, index=True)
-    user_id = Column(String, ForeignKey("users.id"), nullable=False)
+    user_id = Column(String, nullable=False, index=True)
     name = Column(String, nullable=False)
     description = Column(String, nullable=True)
-    days_data = Column(JSON, nullable=False)  # JSON payload for days & exerciseIds
+    days_data = Column(JSON, nullable=True)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
 class WorkoutLogModel(Base):
     __tablename__ = "workout_logs"
 
     id = Column(String, primary_key=True, index=True)
-    user_id = Column(String, ForeignKey("users.id"), nullable=False)
+    user_id = Column(String, nullable=False, index=True)
     day_name = Column(String, nullable=False)
     date_formatted = Column(String, nullable=False)
     time_formatted = Column(String, nullable=False)
     duration_seconds = Column(Integer, default=0)
     total_sets = Column(Integer, default=0)
     total_volume_kg = Column(Float, default=0.0)
-    detailed_exercises = Column(JSON, nullable=True)  # Detailed per-set breakdown
+    detailed_exercises = Column(JSON, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
+
+class ProfileDataModel(Base):
+    __tablename__ = "profile_data"
+
+    profile_id = Column(String, primary_key=True, index=True)
+    routines_json = Column(Text, nullable=True)
+    weights_json = Column(Text, nullable=True)
+    history_json = Column(Text, nullable=True)
+    active_session_json = Column(Text, nullable=True)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)

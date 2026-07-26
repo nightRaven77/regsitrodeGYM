@@ -372,6 +372,96 @@ function setupProfileUI() {
     };
     reader.readAsText(file);
   };
+
+  // User Authentication (Login / Register JWT) handlers
+  const btnToggleAuthMode = document.getElementById('btnToggleAuthMode');
+  const authEmail = document.getElementById('authEmail');
+  const authPassword = document.getElementById('authPassword');
+  const authName = document.getElementById('authName');
+  const btnSubmitAuth = document.getElementById('btnSubmitAuth');
+  const authStatusMessage = document.getElementById('authStatusMessage');
+
+  let isRegisterMode = false;
+
+  if (btnToggleAuthMode) {
+    btnToggleAuthMode.onclick = () => {
+      isRegisterMode = !isRegisterMode;
+      btnToggleAuthMode.textContent = isRegisterMode ? 'Iniciar Sesión' : 'Crear Cuenta';
+      btnSubmitAuth.textContent = isRegisterMode ? 'Registrar Cuenta' : 'Iniciar Sesión';
+      authName.classList.toggle('hidden', !isRegisterMode);
+      authStatusMessage.textContent = '';
+    };
+  }
+
+  if (btnSubmitAuth) {
+    btnSubmitAuth.onclick = async () => {
+      const email = authEmail.value.trim();
+      const password = authPassword.value.trim();
+      const name = authName.value.trim();
+
+      if (!email || !password) {
+        alert('Por favor ingresa tu correo y contraseña.');
+        return;
+      }
+
+      if (isRegisterMode && !name) {
+        alert('Por favor ingresa tu nombre completo.');
+        return;
+      }
+
+      const endpoint = isRegisterMode ? '/api/auth/register' : '/api/auth/login';
+      const bodyPayload = isRegisterMode 
+        ? { email, password, name, avatar: '👨‍🏽‍🦱' } 
+        : { email, password };
+
+      try {
+        btnSubmitAuth.disabled = true;
+        btnSubmitAuth.textContent = 'Procesando...';
+
+        const res = await fetch(endpoint, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(bodyPayload)
+        });
+
+        const data = await res.json();
+        btnSubmitAuth.disabled = false;
+        btnSubmitAuth.textContent = isRegisterMode ? 'Registrar Cuenta' : 'Iniciar Sesión';
+
+        if (!res.ok) {
+          alert(data.detail || 'Error en la autenticación.');
+          return;
+        }
+
+        if (data.token) {
+          localStorage.setItem('gym_jwt_token', data.token);
+          
+          if (data.user) {
+            const userProfile = {
+              id: data.user.id,
+              name: data.user.name,
+              avatar: data.user.avatar || '👨‍🏽‍🦱'
+            };
+
+            if (!appState.profiles.some(p => p.id === userProfile.id)) {
+              appState.profiles.push(userProfile);
+            }
+            switchProfile(userProfile.id);
+          }
+
+          authStatusMessage.textContent = isRegisterMode ? '¡Cuenta creada con éxito! Sincronizando...' : '¡Sesión iniciada! Sincronizando...';
+          setTimeout(() => {
+            profileModal.classList.add('hidden');
+            authStatusMessage.textContent = '';
+          }, 1200);
+        }
+      } catch (err) {
+        btnSubmitAuth.disabled = false;
+        btnSubmitAuth.textContent = isRegisterMode ? 'Registrar Cuenta' : 'Iniciar Sesión';
+        alert('Error conectando con el servidor de autenticación.');
+      }
+    };
+  }
 }
 
 function updateHeaderProfilePill() {

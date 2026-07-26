@@ -332,6 +332,24 @@
           <input type="file" id="importFileInput" accept=".json" class="hidden">
         </div>
       </div>
+
+      <!-- User Auth (Login / Register) Section -->
+      <div style="border-top: 1px solid var(--border-color); margin-top: 14px; padding-top: 14px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+          <label class="form-label" style="margin-bottom: 0;">🔐 Cuenta & Sincronización en Nube:</label>
+          <button id="btnToggleAuthMode" class="btn btn-secondary btn-sm" style="font-size: 11px; padding: 2px 6px;">
+            Crear Cuenta
+          </button>
+        </div>
+
+        <div id="authFormContainer" style="display: flex; flex-direction: column; gap: 8px;">
+          <input type="email" id="authEmail" class="form-control" placeholder="Correo electrónico (ej: erick@gym.com)">
+          <input type="password" id="authPassword" class="form-control" placeholder="Contraseña">
+          <input type="text" id="authName" class="form-control hidden" placeholder="Nombre completo (para registro)">
+          <button id="btnSubmitAuth" class="btn btn-primary btn-sm">Iniciar Sesión</button>
+        </div>
+        <div id="authStatusMessage" style="font-size: 11px; color: var(--accent-green); margin-top: 4px;"></div>
+      </div>
     </div>
   </div>
 
