@@ -88,62 +88,74 @@ class SyncPayload(BaseModel):
 # --- Auth Endpoints ---
 @app.post("/api/auth/register")
 def register_user(payload: UserRegisterSchema):
-    if not HAS_SUPABASE:
-        u_id = "user_" + str(int(os.urandom(4).hex(), 16))
-        token = create_access_token({"sub": u_id, "email": payload.email})
-        return {
-            "token": token,
-            "user": {"id": u_id, "name": payload.name, "email": payload.email, "avatar": payload.avatar}
-        }
-    
-    db = SessionLocal()
     try:
-        existing = db.query(UserModel).filter(UserModel.email == payload.email).first()
-        if existing:
-            raise HTTPException(status_code=400, detail="El correo electrónico ya está registrado.")
+        if not HAS_SUPABASE:
+            u_id = "user_" + str(int(os.urandom(4).hex(), 16))
+            token = create_access_token({"sub": u_id, "email": payload.email})
+            return {
+                "token": token,
+                "user": {"id": u_id, "name": payload.name, "email": payload.email, "avatar": payload.avatar}
+            }
+        
+        db = SessionLocal()
+        try:
+            existing = db.query(UserModel).filter(UserModel.email == payload.email).first()
+            if existing:
+                raise HTTPException(status_code=400, detail="El correo electrónico ya está registrado.")
 
-        u_id = "prof_" + str(int(os.urandom(4).hex(), 16))
-        user = UserModel(
-            id=u_id,
-            email=payload.email,
-            hashed_password=get_password_hash(payload.password),
-            name=payload.name,
-            avatar=payload.avatar
-        )
-        db.add(user)
-        db.commit()
-        db.refresh(user)
+            u_id = "prof_" + str(int(os.urandom(4).hex(), 16))
+            user = UserModel(
+                id=u_id,
+                email=payload.email,
+                hashed_password=get_password_hash(payload.password),
+                name=payload.name,
+                avatar=payload.avatar
+            )
+            db.add(user)
+            db.commit()
+            db.refresh(user)
 
-        token = create_access_token({"sub": user.id, "email": user.email})
-        return {
-            "token": token,
-            "user": {"id": user.id, "name": user.name, "email": user.email, "avatar": user.avatar}
-        }
-    finally:
-        db.close()
+            token = create_access_token({"sub": user.id, "email": user.email})
+            return {
+                "token": token,
+                "user": {"id": user.id, "name": user.name, "email": user.email, "avatar": user.avatar}
+            }
+        finally:
+            db.close()
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"❌ Error en register_user: {e}")
+        raise HTTPException(status_code=400, detail=f"Error en registro: {str(e)}")
 
 @app.post("/api/auth/login")
 def login_user(payload: UserLoginSchema):
-    if not HAS_SUPABASE:
-        token = create_access_token({"sub": "prof_erick", "email": payload.email})
-        return {
-            "token": token,
-            "user": {"id": "prof_erick", "name": "Erick", "email": payload.email, "avatar": "👨‍🏽‍🦱"}
-        }
-
-    db = SessionLocal()
     try:
-        user = db.query(UserModel).filter(UserModel.email == payload.email).first()
-        if not user or not verify_password(payload.password, user.hashed_password):
-            raise HTTPException(status_code=401, detail="Correo o contraseña incorrectos.")
+        if not HAS_SUPABASE:
+            token = create_access_token({"sub": "prof_erick", "email": payload.email})
+            return {
+                "token": token,
+                "user": {"id": "prof_erick", "name": "Erick", "email": payload.email, "avatar": "👨‍🏽‍🦱"}
+            }
 
-        token = create_access_token({"sub": user.id, "email": user.email})
-        return {
-            "token": token,
-            "user": {"id": user.id, "name": user.name, "email": user.email, "avatar": user.avatar}
-        }
-    finally:
-        db.close()
+        db = SessionLocal()
+        try:
+            user = db.query(UserModel).filter(UserModel.email == payload.email).first()
+            if not user or not verify_password(payload.password, user.hashed_password):
+                raise HTTPException(status_code=401, detail="Correo o contraseña incorrectos.")
+
+            token = create_access_token({"sub": user.id, "email": user.email})
+            return {
+                "token": token,
+                "user": {"id": user.id, "name": user.name, "email": user.email, "avatar": user.avatar}
+            }
+        finally:
+            db.close()
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"❌ Error en login_user: {e}")
+        raise HTTPException(status_code=400, detail=f"Error en inicio de sesión: {str(e)}")
 
 @app.get("/api/health")
 def health_check():
