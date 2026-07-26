@@ -589,16 +589,30 @@ function renderLiveExercisesCards() {
     sets.forEach(set => {
       const row = document.createElement('div');
       row.className = 'set-row';
+      row.style.gridTemplateColumns = '32px 1.2fr 1.4fr 44px';
       row.innerHTML = `
         <div class="set-number">S${set.setNum}</div>
+        
+        <!-- Weight Input + Stepper -->
         <div class="set-input-group">
           <label class="set-input-label">Peso (kg)</label>
-          <input type="number" step="0.5" class="set-input weight-input" value="${set.weight}" ${set.completed ? 'disabled' : ''}>
+          <div class="stepper-group">
+            <button class="btn-step btn-weight-minus" ${set.completed ? 'disabled' : ''}>-</button>
+            <input type="number" step="0.5" class="set-input weight-input" value="${set.weight}" ${set.completed ? 'disabled' : ''}>
+            <button class="btn-step btn-weight-plus" ${set.completed ? 'disabled' : ''}>+</button>
+          </div>
         </div>
+
+        <!-- Reps Input + Stepper -->
         <div class="set-input-group">
           <label class="set-input-label">Reps (${ex.unit})</label>
-          <input type="number" class="set-input reps-input" value="${set.actualReps}" ${set.completed ? 'disabled' : ''}>
+          <div class="stepper-group">
+            <button class="btn-step btn-reps-minus" ${set.completed ? 'disabled' : ''}>-</button>
+            <input type="number" class="set-input reps-input" value="${set.actualReps}" ${set.completed ? 'disabled' : ''}>
+            <button class="btn-step btn-reps-plus" ${set.completed ? 'disabled' : ''}>+</button>
+          </div>
         </div>
+
         <button class="btn-check-set ${set.completed ? 'done' : ''}">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>
         </button>
@@ -607,6 +621,35 @@ function renderLiveExercisesCards() {
       const weightInput = row.querySelector('.weight-input');
       const repsInput = row.querySelector('.reps-input');
       const btnCheck = row.querySelector('.btn-check-set');
+
+      const btnWeightMinus = row.querySelector('.btn-weight-minus');
+      const btnWeightPlus = row.querySelector('.btn-weight-plus');
+      const btnRepsMinus = row.querySelector('.btn-reps-minus');
+      const btnRepsPlus = row.querySelector('.btn-reps-plus');
+
+      btnWeightMinus.onclick = () => {
+        set.weight = Math.max(0, parseFloat((set.weight - 2.5).toFixed(1)));
+        weightInput.value = set.weight;
+        saveActiveSession();
+      };
+
+      btnWeightPlus.onclick = () => {
+        set.weight = parseFloat((set.weight + 2.5).toFixed(1));
+        weightInput.value = set.weight;
+        saveActiveSession();
+      };
+
+      btnRepsMinus.onclick = () => {
+        set.actualReps = Math.max(0, set.actualReps - 1);
+        repsInput.value = set.actualReps;
+        saveActiveSession();
+      };
+
+      btnRepsPlus.onclick = () => {
+        set.actualReps = set.actualReps + 1;
+        repsInput.value = set.actualReps;
+        saveActiveSession();
+      };
 
       weightInput.addEventListener('change', (e) => {
         set.weight = parseFloat(e.target.value) || 0;
@@ -933,19 +976,54 @@ function renderDaysInEditor() {
       renderDaysInEditor();
     };
 
-    // 3. Render Selected Summary Chips with Quick Remove (✕)
+    // 3. Render Selected Exercises with Reordering Controls (▲ / ▼ / ✕)
     const selectedSummaryChips = dayCard.querySelector('.selected-summary-chips');
-    selectedExList.forEach(ex => {
-      const chip = document.createElement('span');
-      chip.className = 'exercise-select-chip selected';
-      chip.style.fontSize = '11px';
-      chip.style.padding = '3px 8px';
-      chip.innerHTML = `${ex.name} <strong style="margin-left: 4px; color: var(--accent-red);">✕</strong>`;
-      chip.onclick = () => {
+    selectedExList.forEach((ex, exIdx) => {
+      const row = document.createElement('div');
+      row.className = 'reorder-item-row';
+      row.innerHTML = `
+        <div style="display: flex; align-items: center; gap: 8px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+          <span style="font-weight: 800; color: var(--accent-cyan); font-size: 12px; width: 22px;">#${exIdx + 1}</span>
+          <strong style="color: #fff; font-size: 13px; text-overflow: ellipsis; overflow: hidden;">${ex.name}</strong>
+          <span class="badge badge-${ex.category.toLowerCase()}">${ex.category}</span>
+        </div>
+        <div style="display: flex; align-items: center; gap: 2px; flex-shrink: 0;">
+          <button class="btn-reorder btn-up" ${exIdx === 0 ? 'disabled style="opacity:0.3;"' : ''}>▲</button>
+          <button class="btn-reorder btn-down" ${exIdx === selectedExList.length - 1 ? 'disabled style="opacity:0.3;"' : ''}>▼</button>
+          <button class="btn-reorder btn-remove" style="color: var(--accent-red); margin-left: 4px;">✕</button>
+        </div>
+      `;
+
+      const btnUp = row.querySelector('.btn-up');
+      btnUp.onclick = (e) => {
+        e.stopPropagation();
+        if (exIdx > 0) {
+          const temp = day.exerciseIds[exIdx];
+          day.exerciseIds[exIdx] = day.exerciseIds[exIdx - 1];
+          day.exerciseIds[exIdx - 1] = temp;
+          renderDaysInEditor();
+        }
+      };
+
+      const btnDown = row.querySelector('.btn-down');
+      btnDown.onclick = (e) => {
+        e.stopPropagation();
+        if (exIdx < selectedExList.length - 1) {
+          const temp = day.exerciseIds[exIdx];
+          day.exerciseIds[exIdx] = day.exerciseIds[exIdx + 1];
+          day.exerciseIds[exIdx + 1] = temp;
+          renderDaysInEditor();
+        }
+      };
+
+      const btnRemove = row.querySelector('.btn-remove');
+      btnRemove.onclick = (e) => {
+        e.stopPropagation();
         day.exerciseIds = day.exerciseIds.filter(id => id !== ex.id);
         renderDaysInEditor();
       };
-      selectedSummaryChips.appendChild(chip);
+
+      selectedSummaryChips.appendChild(row);
     });
 
     // 4. Render Grouped Muscle Categories Accordions
