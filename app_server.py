@@ -56,8 +56,7 @@ def init_sqlite_db():
         
         cursor.execute("SELECT COUNT(*) FROM profiles")
         if cursor.fetchone()[0] == 0:
-            cursor.execute("INSERT INTO profiles VALUES ('prof_erick', 'Erick', '👨‍🏽‍🦱')")
-            cursor.execute("INSERT INTO profiles VALUES ('prof_pareja', 'Pareja', '👩🏻')")
+            cursor.execute("INSERT INTO profiles VALUES ('prof_guest', 'Invitado / Anónimo', '👤')")
         
         conn.commit()
         conn.close()

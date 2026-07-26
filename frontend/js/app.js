@@ -20,8 +20,7 @@ let appState = {
 };
 
 const DEFAULT_PROFILES = [
-  { id: 'prof_erick', name: 'Erick', avatar: '👨‍🏽‍🦱' },
-  { id: 'prof_pareja', name: 'Pareja', avatar: '👩🏻' }
+  { id: 'prof_guest', name: 'Invitado / Anónimo', avatar: '👤', isGuest: true }
 ];
 
 // --- Web Audio API Synth Beep for Rest Timer Alert ---
@@ -82,7 +81,7 @@ function loadActiveProfileData() {
   }
 
   const savedActiveRoutineId = localStorage.getItem(`gym_active_routine_id_${pId}`);
-  appState.activeRoutineId = savedActiveRoutineId || appState.routines[0].id;
+  appState.activeRoutineId = savedActiveRoutineId || (appState.routines.length > 0 ? appState.routines[0].id : null);
 
   const savedWeights = localStorage.getItem(`gym_weights_history_${pId}`);
   appState.weightsHistory = savedWeights ? JSON.parse(savedWeights) : {};
@@ -93,11 +92,15 @@ function loadActiveProfileData() {
   const savedSession = localStorage.getItem(`gym_active_session_${pId}`);
   appState.activeSession = savedSession ? JSON.parse(savedSession) : null;
 
-  // 2. Fetch latest data from SQLite Cloud API if connected
-  fetchCloudState(pId);
+  // 2. Fetch latest data from Cloud API if registered account (Guest profiles bypass cloud sync)
+  if (pId !== 'prof_guest' && !pId.startsWith('prof_guest')) {
+    fetchCloudState(pId);
+  }
 }
 
 async function fetchCloudState(pId) {
+  if (!pId || pId === 'prof_guest' || pId.startsWith('prof_guest')) return;
+
   try {
     const res = await fetch(`/api/state/${pId}`);
     if (res.ok) {
@@ -136,7 +139,10 @@ async function fetchCloudState(pId) {
 
 async function syncToCloudDatabase() {
   const pId = appState.activeProfileId;
-  if (!pId) return;
+  // Guest / Anonymous profile data lives EXCLUSIVELY on device (localStorage)
+  if (!pId || pId === 'prof_guest' || pId.startsWith('prof_guest')) {
+    return;
+  }
 
   try {
     const payload = {
@@ -297,7 +303,7 @@ function setupProfileUI() {
     appState.profiles.push(newProfile);
     saveProfiles();
     newProfileName.value = '';
-    
+
     // Switch to newly created profile
     switchProfile(newProfile.id);
     profileModal.classList.add('hidden');
@@ -469,8 +475,8 @@ function setupProfileUI() {
       const activeProfile = appState.profiles.find(p => p.id === appState.activeProfileId);
       const currentAvatar = activeProfile ? activeProfile.avatar : '👨‍🏽‍🦱';
       const endpoint = isRegisterMode ? '/api/auth/register' : '/api/auth/login';
-      const bodyPayload = isRegisterMode 
-        ? { email, password, name, avatar: currentAvatar } 
+      const bodyPayload = isRegisterMode
+        ? { email, password, name, avatar: currentAvatar }
         : { email, password };
 
       try {
@@ -494,7 +500,7 @@ function setupProfileUI() {
 
         if (data.token) {
           localStorage.setItem('gym_jwt_token', data.token);
-          
+
           if (data.user) {
             const userProfile = {
               id: data.user.id,
@@ -545,7 +551,7 @@ function renderProfilesModal() {
     const isCurrent = p.id === appState.activeProfileId;
     const card = document.createElement('div');
     card.className = `profile-item-card ${isCurrent ? 'active' : ''}`;
-    
+
     card.innerHTML = `
       <div style="display: flex; align-items: center; gap: 10px;">
         <span style="font-size: 24px;">${p.avatar}</span>
@@ -668,7 +674,7 @@ function setupRoutineDropdowns() {
 function updateDayDropdown() {
   const activeRoutine = appState.routines.find(r => r.id === appState.activeRoutineId) || appState.routines[0];
   daySelect.innerHTML = '';
-  
+
   if (activeRoutine && activeRoutine.days) {
     activeRoutine.days.forEach((day, idx) => {
       const option = document.createElement('option');
@@ -701,7 +707,7 @@ function renderTodayExercisesPreview() {
   exercises.forEach(ex => {
     const item = document.createElement('div');
     item.style.cssText = 'display: flex; justify-content: space-between; align-items: center; background: var(--bg-input); padding: 8px 12px; border-radius: var(--radius-sm); font-size: 13px;';
-    
+
     const lastHistory = appState.weightsHistory[ex.id];
     const lastWeightStr = lastHistory ? `${lastHistory.weight} kg` : 'Sin registro';
 
@@ -733,13 +739,13 @@ function startNewWorkoutSession() {
     .filter(Boolean);
 
   const now = new Date();
-  
+
   // Construct sets data structure for each exercise
   const setsData = {};
   exercises.forEach(ex => {
     const lastHistory = appState.weightsHistory[ex.id];
     const initialWeight = lastHistory ? lastHistory.weight : 0;
-    
+
     setsData[ex.id] = [];
     for (let i = 1; i <= ex.defaultSets; i++) {
       setsData[ex.id].push({
@@ -1133,7 +1139,7 @@ function confirmEndWorkout() {
   statusText.textContent = 'Listo';
 
   renderHistory();
-  alert(`¡Entrenamiento Guardado! 💪\nDuración: ${Math.floor(workoutRecord.durationSeconds/60)} mins\nSeries Completadas: ${totalSetsCompleted}`);
+  alert(`¡Entrenamiento Guardado! 💪\nDuración: ${Math.floor(workoutRecord.durationSeconds / 60)} mins\nSeries Completadas: ${totalSetsCompleted}`);
 }
 
 // --- Exercises Catalog View & Filtering ---
@@ -1268,11 +1274,11 @@ function renderHistory() {
           record.detailedExercises.forEach(ex => {
             const exBlock = document.createElement('div');
             exBlock.className = 'history-detail-exercise';
-            
+
             const setsHtml = ex.sets.map(s => {
               const u = s.weightUnit || 'kg';
-              const altUnitText = (u === 'lb') 
-                ? `(≈ ${(s.weight * 0.453592).toFixed(1)} kg)` 
+              const altUnitText = (u === 'lb')
+                ? `(≈ ${(s.weight * 0.453592).toFixed(1)} kg)`
                 : `(≈ ${(s.weight * 2.20462).toFixed(1)} lb)`;
               return `<span class="history-set-tag">S${s.setNum}: <strong>${s.weight} ${u}</strong> <span style="font-size:10px; color:var(--accent-green);">${altUnitText}</span> × ${s.actualReps} ${ex.unit || 'reps'}</span>`;
             }).join('');
