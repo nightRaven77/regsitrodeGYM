@@ -240,6 +240,12 @@ document.addEventListener('DOMContentLoaded', () => {
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('sw.js').catch(err => console.log('SW registration failed:', err));
   }
+
+  // Auto-sync offline changes to Supabase when network is restored
+  window.addEventListener('online', () => {
+    console.log('📶 Red restablecida. Sincronizando datos con Supabase...');
+    syncToCloudDatabase();
+  });
 });
 
 function refreshCurrentProfileUI() {

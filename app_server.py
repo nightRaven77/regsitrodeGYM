@@ -1,8 +1,7 @@
 from fastapi import FastAPI, HTTPException, Depends, status
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel, EmailStr
-from sqlalchemy.orm import Session
+from pydantic import BaseModel
 import sqlite3
 import json
 import os
@@ -30,7 +29,7 @@ try:
     HAS_SUPABASE = True
     print("✅ Tablas de SQLAlchemy / Supabase inicializadas correctamente.")
 except Exception as e:
-    print(f"ℹ️ Advertencia inicializando SQLAlchemy/Supabase: {e}")
+    print(f"ℹ️ Modo Offline / SQLite fallback activo: {e}")
 
 # 2. Local SQLite fallback initialization
 def init_sqlite_db():
@@ -63,7 +62,7 @@ def init_sqlite_db():
         conn.commit()
         conn.close()
     except Exception as e:
-        print(f"ℹ️ SQLite fallback: {e}")
+        print(f"ℹ️ SQLite fallback error: {e}")
 
 init_sqlite_db()
 
@@ -90,7 +89,6 @@ class SyncPayload(BaseModel):
 @app.post("/api/auth/register")
 def register_user(payload: UserRegisterSchema):
     if not HAS_SUPABASE:
-        # Local mock user creation
         u_id = "user_" + str(int(os.urandom(4).hex(), 16))
         token = create_access_token({"sub": u_id, "email": payload.email})
         return {
@@ -152,7 +150,7 @@ def health_check():
     return {
         "status": "online",
         "app": "CenterFit GymTracker API v2.0",
-        "database": "PostgreSQL/Supabase" if (HAS_SUPABASE and os.environ.get("DATABASE_URL")) else "SQLite Local"
+        "primary_database": "Supabase PostgreSQL" if (HAS_SUPABASE and os.environ.get("DATABASE_URL")) else "SQLite Local Fallback"
     }
 
 # --- State Sync & Fetch Endpoints ---
@@ -162,46 +160,79 @@ def get_profile_state(profile_id: str):
     weightsHistory = {}
     workoutHistory = []
     activeSession = None
+    source = "sqlite_fallback"
 
-    # 1. Try fetching from Supabase if connected
+    # 1. Primary Preference: Read directly from Supabase PostgreSQL
     if HAS_SUPABASE:
         db = SessionLocal()
         try:
+            r_models = db.query(RoutineModel).filter(RoutineModel.user_id == profile_id).all()
+            if r_models:
+                routines = [{"id": r.id, "name": r.name, "days": r.days_data} for r in r_models]
+
+            w_models = db.query(WorkoutLogModel).filter(WorkoutLogModel.user_id == profile_id).order_by(WorkoutLogModel.created_at.desc()).all()
+            if w_models:
+                workoutHistory = [{
+                    "id": w.id,
+                    "dayName": w.day_name,
+                    "dateFormatted": w.date_formatted,
+                    "timeFormatted": w.time_formatted,
+                    "durationSeconds": w.duration_seconds,
+                    "totalSets": w.total_sets,
+                    "totalVolumeKg": w.total_volume_kg,
+                    "detailedExercises": w.detailed_exercises
+                } for w in w_models]
+
             p_data = db.query(ProfileDataModel).filter(ProfileDataModel.profile_id == profile_id).first()
             if p_data:
-                routines = json.loads(p_data.routines_json) if p_data.routines_json else None
+                if not routines and p_data.routines_json:
+                    routines = json.loads(p_data.routines_json)
                 weightsHistory = json.loads(p_data.weights_json) if p_data.weights_json else {}
-                workoutHistory = json.loads(p_data.history_json) if p_data.history_json else []
+                if not workoutHistory and p_data.history_json:
+                    workoutHistory = json.loads(p_data.history_json)
                 activeSession = json.loads(p_data.active_session_json) if p_data.active_session_json else None
+
+            if routines is not None or len(workoutHistory) > 0 or p_data:
+                source = "supabase_primary"
+                return {
+                    "profiles": [
+                        {"id": "prof_erick", "name": "Erick", "avatar": "👨‍🏽‍🦱"},
+                        {"id": "prof_pareja", "name": "Pareja", "avatar": "👩🏻"}
+                    ],
+                    "routines": routines,
+                    "weightsHistory": weightsHistory,
+                    "workoutHistory": workoutHistory,
+                    "activeSession": activeSession,
+                    "source": source
+                }
         except Exception as e:
-            print(f"Supabase read fallback: {e}")
+            print(f"⚠️ Lectura Supabase no disponible (Usando SQLite fallback): {e}")
         finally:
             db.close()
 
-    # 2. SQLite local fallback if Supabase record empty
-    if routines is None:
-        conn = sqlite3.connect(DB_FILE)
-        cursor = conn.cursor()
-        cursor.execute("SELECT routines_json, weights_json, history_json, active_session_json FROM profile_data WHERE profile_id = ?", (profile_id,))
-        row = cursor.fetchone()
-        if row:
-            routines = json.loads(row[0]) if row[0] else None
-            weightsHistory = json.loads(row[1]) if row[1] else {}
-            workoutHistory = json.loads(row[2]) if row[2] else []
-            activeSession = json.loads(row[3]) if row[3] else None
-        conn.close()
+    # 2. Secondary Fallback: SQLite
+    conn = sqlite3.connect(DB_FILE)
+    cursor = conn.cursor()
+    cursor.execute("SELECT routines_json, weights_json, history_json, active_session_json FROM profile_data WHERE profile_id = ?", (profile_id,))
+    row = cursor.fetchone()
+    conn.close()
 
-    profiles = [
-        {"id": "prof_erick", "name": "Erick", "avatar": "👨‍🏽‍🦱"},
-        {"id": "prof_pareja", "name": "Pareja", "avatar": "👩🏻"}
-    ]
+    if row:
+        routines = json.loads(row[0]) if row[0] else None
+        weightsHistory = json.loads(row[1]) if row[1] else {}
+        workoutHistory = json.loads(row[2]) if row[2] else []
+        activeSession = json.loads(row[3]) if row[3] else None
 
     return {
-        "profiles": profiles,
+        "profiles": [
+            {"id": "prof_erick", "name": "Erick", "avatar": "👨‍🏽‍🦱"},
+            {"id": "prof_pareja", "name": "Pareja", "avatar": "👩🏻"}
+        ],
         "routines": routines,
         "weightsHistory": weightsHistory,
         "workoutHistory": workoutHistory,
-        "activeSession": activeSession
+        "activeSession": activeSession,
+        "source": "sqlite_fallback"
     }
 
 @app.post("/api/sync/{profile_id}")
@@ -211,7 +242,9 @@ def sync_profile_state(profile_id: str, payload: SyncPayload):
     history_str = json.dumps(payload.workoutHistory) if payload.workoutHistory is not None else None
     active_str = json.dumps(payload.activeSession) if payload.activeSession is not None else None
 
-    # 1. Sync to Supabase PostgreSQL (populating profile_data, routines, and workout_logs tables)
+    supabase_success = False
+
+    # 1. Primary Preference: Write directly to Supabase PostgreSQL
     if HAS_SUPABASE:
         db = SessionLocal()
         try:
@@ -263,14 +296,15 @@ def sync_profile_state(profile_id: str, payload: SyncPayload):
                             db.add(w_model)
 
             db.commit()
+            supabase_success = True
             print(f"✅ Sincronizado a Supabase correctamente para {profile_id}")
         except Exception as e:
-            print(f"⚠️ Error sincronizando a Supabase: {e}")
+            print(f"⚠️ Error sincronizando a Supabase (Respaldo SQLite activo): {e}")
             db.rollback()
         finally:
             db.close()
 
-    # 2. Sync to local SQLite fallback
+    # 2. Secondary / Local Fallback: Write to SQLite
     try:
         conn = sqlite3.connect(DB_FILE)
         cursor = conn.cursor()
@@ -286,7 +320,11 @@ def sync_profile_state(profile_id: str, payload: SyncPayload):
     except Exception as e:
         print(f"ℹ️ SQLite sync fallback: {e}")
 
-    return {"status": "synced", "profile_id": profile_id}
+    return {
+        "status": "synced",
+        "primary_database": "supabase" if supabase_success else "sqlite_fallback",
+        "profile_id": profile_id
+    }
 
 # Mount static frontend files for production serving
 frontend_path = os.path.join(BASE_DIR, "frontend")
