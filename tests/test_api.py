@@ -1,4 +1,3 @@
-import os
 import pytest
 from fastapi.testclient import TestClient
 from app_server import app, Base, engine
@@ -22,15 +21,17 @@ def test_state_endpoint_fallback():
     assert response.status_code == 200
     json_data = response.json()
     assert "routines" in json_data
-    assert "weights_history" in json_data
+    assert "weightsHistory" in json_data
 
-def test_save_state_endpoint():
+def test_sync_state_endpoint():
     payload = {
+        "profiles": [{"id": "prof_erick", "name": "Erick", "avatar": "👨‍🏽‍🦱"}],
+        "activeProfileId": "prof_erick",
         "routines": [{"id": "r1", "name": "Rutina Test", "days": []}],
-        "weights_history": {"p1": {"weight": 50, "reps": 12}},
-        "workout_history": [],
-        "active_session": None
+        "weightsHistory": {"p1": {"weight": 50, "reps": 12}},
+        "workoutHistory": [],
+        "activeSession": None
     }
-    response = client.post("/api/state/test_profile_id", json=payload)
+    response = client.post("/api/sync/prof_erick", json=payload)
     assert response.status_code == 200
-    assert response.json()["status"] == "saved"
+    assert response.json()["status"] == "synced"
