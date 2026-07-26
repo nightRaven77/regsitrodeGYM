@@ -45,3 +45,17 @@ class ProfileDataModel(Base):
     history_json = Column(Text, nullable=True)
     active_session_json = Column(Text, nullable=True)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+class ExerciseModel(Base):
+    __tablename__ = "exercises"
+
+    id = Column(String, primary_key=True, index=True)
+    name = Column(String, nullable=False, index=True)
+    category = Column(String, nullable=False, index=True)
+    equipment = Column(String, default="General")
+    default_sets = Column(Integer, default=3)
+    default_reps = Column(Integer, default=10)
+    weight_unit = Column(String, default="kg")
+    image_url = Column(String, nullable=True)
+    musclewiki_url = Column(String, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)

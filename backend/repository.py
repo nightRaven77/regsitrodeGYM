@@ -1,11 +1,117 @@
 import json
 import os
 import sqlite3
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, List
 from sqlalchemy.orm import Session
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DB_FILE = os.path.join(BASE_DIR, "gymtracker.db")
+
+MUSCLEWIKI_MAP = {
+    'Pierna': 'https://musclewiki.com/exercises/male/quads',
+    'Pectoral': 'https://musclewiki.com/exercises/male/chest',
+    'Espalda': 'https://musclewiki.com/exercises/male/lats',
+    'Hombro': 'https://musclewiki.com/exercises/male/shoulders',
+    'Bíceps': 'https://musclewiki.com/exercises/male/biceps',
+    'Tríceps': 'https://musclewiki.com/exercises/male/triceps',
+    'Abdomen': 'https://musclewiki.com/exercises/male/abs'
+}
+
+INITIAL_CATALOG_SEED = [
+  # --- PIERNA ---
+  { "id": 'p1', "category": 'Pierna', "name": 'Leg Curl Sentado', "equipment": 'Máquina', "defaultSets": 1, "defaultReps": 15, "unit": 'reps' },
+  { "id": 'p2', "category": 'Pierna', "name": 'Leg Extensión', "equipment": 'Máquina', "defaultSets": 1, "defaultReps": 12, "unit": 'reps' },
+  { "id": 'p3', "category": 'Pierna', "name": 'Leg Curl Horizontal', "equipment": 'Máquina', "defaultSets": 1, "defaultReps": 12, "unit": 'reps' },
+  { "id": 'p4', "category": 'Pierna', "name": 'Prensa Para Pierna', "equipment": 'Máquina', "defaultSets": 1, "defaultReps": 12, "unit": 'reps' },
+  { "id": 'p5', "category": 'Pierna', "name": 'Sentadilla Smith', "equipment": 'Máquina Smith', "defaultSets": 1, "defaultReps": 12, "unit": 'reps' },
+  { "id": 'p6', "category": 'Pierna', "name": 'Sentadilla Barra Libre', "equipment": 'Barra', "defaultSets": 1, "defaultReps": 12, "unit": 'reps' },
+  { "id": 'p7', "category": 'Pierna', "name": 'Peso Muerto', "equipment": 'Barra', "defaultSets": 1, "defaultReps": 12, "unit": 'reps' },
+  { "id": 'p8', "category": 'Pierna', "name": 'Máquina de Abductores', "equipment": 'Máquina', "defaultSets": 1, "defaultReps": 15, "unit": 'reps' },
+  { "id": 'p9', "category": 'Pierna', "name": 'Máquina de Aductores', "equipment": 'Máquina', "defaultSets": 1, "defaultReps": 15, "unit": 'reps' },
+  { "id": 'p10', "category": 'Pierna', "name": 'Elevación de Talones', "equipment": 'Máquina/Mancuerna', "defaultSets": 1, "defaultReps": 15, "unit": 'reps' },
+  { "id": 'p11', "category": 'Pierna', "name": 'Desplantes', "equipment": 'Mancuernas', "defaultSets": 1, "defaultReps": 15, "unit": 'reps' },
+  { "id": 'p12', "category": 'Pierna', "name": 'Glúteo Polea', "equipment": 'Polea', "defaultSets": 1, "defaultReps": 15, "unit": 'reps' },
+  { "id": 'p13', "category": 'Pierna', "name": 'Patada Atrás', "equipment": 'Polea/Libre', "defaultSets": 1, "defaultReps": 15, "unit": 'reps' },
+  { "id": 'p14', "category": 'Pierna', "name": 'Puente', "equipment": 'Barra/Libre', "defaultSets": 1, "defaultReps": 15, "unit": 'reps' },
+  { "id": 'p15', "category": 'Pierna', "name": 'Sentadilla Isométrica', "equipment": 'Peso Corporal', "defaultSets": 1, "defaultReps": 30, "unit": 'seg' },
+  { "id": 'p16', "category": 'Pierna', "name": 'Peso Muerto Rumano', "equipment": 'Barra/Mancuerna', "defaultSets": 1, "defaultReps": 12, "unit": 'reps' },
+  { "id": 'p17', "category": 'Pierna', "name": 'Patada de Glúteo en Máquina', "equipment": 'Máquina', "defaultSets": 1, "defaultReps": 15, "unit": 'reps' },
+  { "id": 'p18', "category": 'Pierna', "name": 'Prensa Horizontal', "equipment": 'Máquina', "defaultSets": 1, "defaultReps": 15, "unit": 'reps' },
+  { "id": 'p19', "category": 'Pierna', "name": 'Lunge con Pierna Trasera Elevada', "equipment": 'Mancuernas', "defaultSets": 1, "defaultReps": 15, "unit": 'reps' },
+
+  # --- PECTORAL ---
+  { "id": 'c1', "category": 'Pectoral', "name": 'Declinado', "equipment": 'Barra', "defaultSets": 1, "defaultReps": 12, "unit": 'reps' },
+  { "id": 'c2', "category": 'Pectoral', "name": 'Lagartija', "equipment": 'Peso Corporal', "defaultSets": 1, "defaultReps": 15, "unit": 'reps' },
+  { "id": 'c3', "category": 'Pectoral', "name": 'Press Vertical', "equipment": 'Máquina', "defaultSets": 1, "defaultReps": 15, "unit": 'reps' },
+  { "id": 'c4', "category": 'Pectoral', "name": 'Press Inclinado con Barra', "equipment": 'Barra', "defaultSets": 1, "defaultReps": 15, "unit": 'reps' },
+  { "id": 'c5', "category": 'Pectoral', "name": 'Press Plano', "equipment": 'Barra', "defaultSets": 1, "defaultReps": 15, "unit": 'reps' },
+  { "id": 'c6', "category": 'Pectoral', "name": 'Cable Cruzado', "equipment": 'Polea', "defaultSets": 1, "defaultReps": 15, "unit": 'reps' },
+  { "id": 'c7', "category": 'Pectoral', "name": 'Press Inclinado Mancuernas', "equipment": 'Mancuernas', "defaultSets": 1, "defaultReps": 12, "unit": 'reps' },
+  { "id": 'c8', "category": 'Pectoral', "name": 'Pec Fly en Máquina', "equipment": 'Máquina', "defaultSets": 1, "defaultReps": 15, "unit": 'reps' },
+  { "id": 'c9', "category": 'Pectoral', "name": 'Press Articulado', "equipment": 'Máquina', "defaultSets": 1, "defaultReps": 12, "unit": 'reps' },
+  { "id": 'c10', "category": 'Pectoral', "name": 'Fondos Pectoral', "equipment": 'Paralelas', "defaultSets": 1, "defaultReps": 12, "unit": 'reps' },
+
+  # --- ESPALDA ---
+  { "id": 'b1', "category": 'Espalda', "name": 'Dominadas', "equipment": 'Barra Fija', "defaultSets": 1, "defaultReps": 12, "unit": 'reps' },
+  { "id": 'b2', "category": 'Espalda', "name": 'Jalón Polea Alta', "equipment": 'Polea', "defaultSets": 1, "defaultReps": 15, "unit": 'reps' },
+  { "id": 'b3', "category": 'Espalda', "name": 'Jalón Polea Cerrado', "equipment": 'Polea', "defaultSets": 1, "defaultReps": 12, "unit": 'reps' },
+  { "id": 'b4', "category": 'Espalda', "name": 'Remo Máquina', "equipment": 'Máquina', "defaultSets": 1, "defaultReps": 12, "unit": 'reps' },
+  { "id": 'b5', "category": 'Espalda', "name": 'Remo con Mancuerna', "equipment": 'Mancuerna', "defaultSets": 1, "defaultReps": 15, "unit": 'reps' },
+  { "id": 'b6', "category": 'Espalda', "name": 'Jalón con Máquina', "equipment": 'Máquina', "defaultSets": 1, "defaultReps": 12, "unit": 'reps' },
+  { "id": 'b7', "category": 'Espalda', "name": 'Remo con Barra', "equipment": 'Barra', "defaultSets": 1, "defaultReps": 15, "unit": 'reps' },
+  { "id": 'b8', "category": 'Espalda', "name": 'Hiper Extension', "equipment": 'Banco Romano', "defaultSets": 1, "defaultReps": 15, "unit": 'reps' },
+  { "id": 'b9', "category": 'Espalda', "name": 'Remo Articulado', "equipment": 'Máquina', "defaultSets": 1, "defaultReps": 12, "unit": 'reps' },
+  { "id": 'b10', "category": 'Espalda', "name": 'Lat Pulldown', "equipment": 'Polea', "defaultSets": 1, "defaultReps": 15, "unit": 'reps' },
+
+  # --- HOMBRO ---
+  { "id": 's1', "category": 'Hombro', "name": 'Hombro Press', "equipment": 'Máquina', "defaultSets": 1, "defaultReps": 15, "unit": 'reps' },
+  { "id": 's2', "category": 'Hombro', "name": 'Elevaciones Laterales en Polea', "equipment": 'Polea', "defaultSets": 1, "defaultReps": 15, "unit": 'reps' },
+  { "id": 's3', "category": 'Hombro', "name": 'Press Militar', "equipment": 'Barra', "defaultSets": 1, "defaultReps": 12, "unit": 'reps' },
+  { "id": 's4', "category": 'Hombro', "name": 'Press Tras Nuca Barra', "equipment": 'Barra', "defaultSets": 1, "defaultReps": 12, "unit": 'reps' },
+  { "id": 's5', "category": 'Hombro', "name": 'Elevación Late Manc.', "equipment": 'Mancuernas', "defaultSets": 1, "defaultReps": 15, "unit": 'reps' },
+  { "id": 's6', "category": 'Hombro', "name": 'Elevaciones Frontales Manc.', "equipment": 'Mancuernas', "defaultSets": 1, "defaultReps": 15, "unit": 'reps' },
+  { "id": 's7', "category": 'Hombro', "name": 'Remo de Pie', "equipment": 'Barra/Polea', "defaultSets": 1, "defaultReps": 15, "unit": 'reps' },
+  { "id": 's8', "category": 'Hombro', "name": 'Deltoides Posteriores Mancuernas', "equipment": 'Mancuernas', "defaultSets": 1, "defaultReps": 15, "unit": 'reps' },
+  { "id": 's9', "category": 'Hombro', "name": 'Press Mancuerna', "equipment": 'Mancuernas', "defaultSets": 1, "defaultReps": 12, "unit": 'reps' },
+  { "id": 's10', "category": 'Hombro', "name": 'Encogimiento Hombros Mancuerna', "equipment": 'Mancuernas', "defaultSets": 1, "defaultReps": 15, "unit": 'reps' },
+  { "id": 's11', "category": 'Hombro', "name": 'Remo en Banco Inclinado', "equipment": 'Mancuernas', "defaultSets": 1, "defaultReps": 12, "unit": 'reps' },
+
+  # --- BÍCEPS ---
+  { "id": 'bi1', "category": 'Bíceps', "name": 'Predicador en Máquina', "equipment": 'Máquina', "defaultSets": 1, "defaultReps": 15, "unit": 'reps' },
+  { "id": 'bi2', "category": 'Bíceps', "name": 'Bíceps Barra Agarre Abierto', "equipment": 'Barra Z', "defaultSets": 1, "defaultReps": 15, "unit": 'reps' },
+  { "id": 'bi3', "category": 'Bíceps', "name": 'Bíceps Mancuerna', "equipment": 'Mancuernas', "defaultSets": 1, "defaultReps": 15, "unit": 'reps' },
+  { "id": 'bi4', "category": 'Bíceps', "name": 'Bíceps Polea', "equipment": 'Polea', "defaultSets": 1, "defaultReps": 15, "unit": 'reps' },
+  { "id": 'bi5', "category": 'Bíceps', "name": 'Curl Concentrado', "equipment": 'Mancuerna', "defaultSets": 1, "defaultReps": 12, "unit": 'reps' },
+  { "id": 'bi6', "category": 'Bíceps', "name": 'Dominadas en Supinación', "equipment": 'Barra Fija', "defaultSets": 1, "defaultReps": 12, "unit": 'reps' },
+  { "id": 'bi7', "category": 'Bíceps', "name": 'Martillos', "equipment": 'Mancuernas', "defaultSets": 1, "defaultReps": 12, "unit": 'reps' },
+  { "id": 'bi8', "category": 'Bíceps', "name": 'Bíceps en Polea Alta', "equipment": 'Polea', "defaultSets": 1, "defaultReps": 15, "unit": 'reps' },
+  { "id": 'bi9', "category": 'Bíceps', "name": 'Antebrazo Barra o Mancuerna', "equipment": 'Barra/Mancuerna', "defaultSets": 1, "defaultReps": 15, "unit": 'reps' },
+  { "id": 'bi10', "category": 'Bíceps', "name": 'Bíceps Predicador', "equipment": 'Banco Scott', "defaultSets": 1, "defaultReps": 12, "unit": 'reps' },
+
+  # --- TRÍCEPS ---
+  { "id": 'tr1', "category": 'Tríceps', "name": 'Patada Tríceps con Polea', "equipment": 'Polea', "defaultSets": 1, "defaultReps": 15, "unit": 'reps' },
+  { "id": 'tr2', "category": 'Tríceps', "name": 'Press Francés', "equipment": 'Barra Z', "defaultSets": 1, "defaultReps": 15, "unit": 'reps' },
+  { "id": 'tr3', "category": 'Tríceps', "name": 'Copa Tríceps', "equipment": 'Mancuerna', "defaultSets": 1, "defaultReps": 12, "unit": 'reps' },
+  { "id": 'tr4', "category": 'Tríceps', "name": 'Press Cerrado', "equipment": 'Barra', "defaultSets": 1, "defaultReps": 12, "unit": 'reps' },
+  { "id": 'tr5', "category": 'Tríceps', "name": 'Fondos Tríceps', "equipment": 'Paralelas', "defaultSets": 1, "defaultReps": 12, "unit": 'reps' },
+  { "id": 'tr6', "category": 'Tríceps', "name": 'Patada de Tríceps', "equipment": 'Mancuerna', "defaultSets": 1, "defaultReps": 15, "unit": 'reps' },
+  { "id": 'tr7', "category": 'Tríceps', "name": 'Jalón con Cuerda', "equipment": 'Polea', "defaultSets": 1, "defaultReps": 15, "unit": 'reps' },
+  { "id": 'tr8', "category": 'Tríceps', "name": 'Jalón con Barra', "equipment": 'Polea', "defaultSets": 1, "defaultReps": 15, "unit": 'reps' },
+  { "id": 'tr9', "category": 'Tríceps', "name": 'Fondos en Máquina', "equipment": 'Máquina', "defaultSets": 1, "defaultReps": 12, "unit": 'reps' },
+  { "id": 'tr10', "category": 'Tríceps', "name": 'Press Francés en Máquina', "equipment": 'Máquina', "defaultSets": 1, "defaultReps": 12, "unit": 'reps' },
+
+  # --- ABDOMEN ---
+  { "id": 'ab1', "category": 'Abdomen', "name": 'Plancha Estática', "equipment": 'Peso Corporal', "defaultSets": 1, "defaultReps": 30, "unit": 'seg' },
+  { "id": 'ab2', "category": 'Abdomen', "name": 'Abdominal Banco', "equipment": 'Banco Declinado', "defaultSets": 1, "defaultReps": 20, "unit": 'reps' },
+  { "id": 'ab3', "category": 'Abdomen', "name": 'Abdominal Paralelas', "equipment": 'Paralelas', "defaultSets": 1, "defaultReps": 15, "unit": 'reps' },
+  { "id": 'ab4', "category": 'Abdomen', "name": 'Oblicuos', "equipment": 'Peso Corporal', "defaultSets": 1, "defaultReps": 20, "unit": 'reps' },
+  { "id": 'ab5', "category": 'Abdomen', "name": 'Rueda Abdominal', "equipment": 'Rueda', "defaultSets": 1, "defaultReps": 15, "unit": 'reps' },
+  { "id": 'ab6', "category": 'Abdomen', "name": 'Encogimiento Tronco y Piernas', "equipment": 'Peso Corporal', "defaultSets": 1, "defaultReps": 20, "unit": 'reps' },
+  { "id": 'ab7', "category": 'Abdomen', "name": 'Crunch Fitball', "equipment": 'Fitball', "defaultSets": 1, "defaultReps": 20, "unit": 'reps' },
+  { "id": 'ab8', "category": 'Abdomen', "name": 'Stability Crunches', "equipment": 'Fitball', "defaultSets": 1, "defaultReps": 20, "unit": 'reps' },
+  { "id": 'ab9', "category": 'Abdomen', "name": 'Crunch en Máquina', "equipment": 'Máquina', "defaultSets": 1, "defaultReps": 20, "unit": 'reps' },
+  { "id": 'ab10', "category": 'Abdomen', "name": 'Abcoaster', "equipment": 'Máquina', "defaultSets": 1, "defaultReps": 20, "unit": 'reps' }
+]
 
 class StorageRepository:
     """
@@ -36,13 +142,145 @@ class StorageRepository:
                     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 )
             """)
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS exercises (
+                    id TEXT PRIMARY KEY,
+                    name TEXT NOT NULL,
+                    category TEXT NOT NULL,
+                    equipment TEXT DEFAULT 'General',
+                    default_sets INTEGER DEFAULT 1,
+                    default_reps INTEGER DEFAULT 12,
+                    unit TEXT DEFAULT 'reps',
+                    image_url TEXT,
+                    musclewiki_url TEXT,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            """)
             cursor.execute("SELECT COUNT(*) FROM profiles")
             if cursor.fetchone()[0] == 0:
                 cursor.execute("INSERT INTO profiles VALUES ('prof_guest', 'Invitado / Anónimo', '👤')")
+
+            # Seed exercises in SQLite if empty
+            cursor.execute("SELECT COUNT(*) FROM exercises")
+            if cursor.fetchone()[0] == 0:
+                for item in INITIAL_CATALOG_SEED:
+                    mw_url = MUSCLEWIKI_MAP.get(item['category'], f"https://musclewiki.com/search?q={item['name']}")
+                    cursor.execute("""
+                        INSERT INTO exercises (id, name, category, equipment, default_sets, default_reps, unit, image_url, musclewiki_url)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    """, (item['id'], item['name'], item['category'], item['equipment'], item['defaultSets'], item['defaultReps'], item['unit'], None, mw_url))
+
             conn.commit()
             conn.close()
         except Exception as e:
             print(f"ℹ️ SQLite fallback initialization error: {e}")
+
+    @staticmethod
+    def get_exercises(db: Optional[Session] = None, has_supabase: bool = False) -> List[Dict[str, Any]]:
+        """Fetch all exercises from database (Supabase or SQLite)."""
+        if has_supabase and db is not None:
+            try:
+                from backend.models import ExerciseModel
+                ex_models = db.query(ExerciseModel).order_by(ExerciseModel.category, ExerciseModel.name).all()
+                if not ex_models:
+                    # Seed Supabase PostgreSQL if empty
+                    for item in INITIAL_CATALOG_SEED:
+                        mw_url = MUSCLEWIKI_MAP.get(item['category'], f"https://musclewiki.com/search?q={item['name']}")
+                        m = ExerciseModel(
+                            id=item['id'], name=item['name'], category=item['category'],
+                            equipment=item['equipment'], default_sets=item['defaultSets'],
+                            default_reps=item['defaultReps'], weight_unit=item['unit'],
+                            musclewiki_url=mw_url
+                        )
+                        db.add(m)
+                    db.commit()
+                    ex_models = db.query(ExerciseModel).order_by(ExerciseModel.category, ExerciseModel.name).all()
+
+                return [{
+                    "id": ex.id,
+                    "name": ex.name,
+                    "category": ex.category,
+                    "equipment": ex.equipment or "General",
+                    "defaultSets": ex.default_sets or 1,
+                    "defaultReps": ex.default_reps or 12,
+                    "unit": ex.weight_unit or "reps",
+                    "imageUrl": ex.image_url,
+                    "musclewikiUrl": ex.musclewiki_url or MUSCLEWIKI_MAP.get(ex.category, f"https://musclewiki.com/search?q={ex.name}")
+                } for ex in ex_models]
+            except Exception as e:
+                print(f"⚠️ Error leyendo ejercicios de Supabase: {e}")
+
+        # SQLite Fallback
+        conn = sqlite3.connect(DB_FILE)
+        cursor = conn.cursor()
+        cursor.execute("SELECT id, name, category, equipment, default_sets, default_reps, unit, image_url, musclewiki_url FROM exercises ORDER BY category, name")
+        rows = cursor.fetchall()
+        conn.close()
+
+        return [{
+            "id": r[0],
+            "name": r[1],
+            "category": r[2],
+            "equipment": r[3] or "General",
+            "defaultSets": r[4] or 1,
+            "defaultReps": r[5] or 12,
+            "unit": r[6] or "reps",
+            "imageUrl": r[7],
+            "musclewikiUrl": r[8] or MUSCLEWIKI_MAP.get(r[2], f"https://musclewiki.com/search?q={r[1]}")
+        } for r in rows]
+
+    @staticmethod
+    def save_exercise(ex_dict: Dict[str, Any], db: Optional[Session] = None, has_supabase: bool = False) -> Dict[str, Any]:
+        """Create or update a custom exercise in catalog."""
+        ex_id = ex_dict.get('id') or ('ex_' + str(int(os.urandom(4).hex(), 16)))
+        name = ex_dict.get('name', 'Nuevo Ejercicio')
+        category = ex_dict.get('category', 'Pierna')
+        equipment = ex_dict.get('equipment', 'General')
+        default_sets = ex_dict.get('defaultSets', 1)
+        default_reps = ex_dict.get('defaultReps', 12)
+        unit = ex_dict.get('unit', 'reps')
+        mw_url = ex_dict.get('musclewikiUrl') or MUSCLEWIKI_MAP.get(category, f"https://musclewiki.com/search?q={name}")
+
+        if has_supabase and db is not None:
+            try:
+                from backend.models import ExerciseModel
+                ex_m = db.query(ExerciseModel).filter(ExerciseModel.id == ex_id).first()
+                if not ex_m:
+                    ex_m = ExerciseModel(
+                        id=ex_id, name=name, category=category, equipment=equipment,
+                        default_sets=default_sets, default_reps=default_reps, weight_unit=unit,
+                        musclewiki_url=mw_url
+                    )
+                    db.add(ex_m)
+                else:
+                    ex_m.name = name
+                    ex_m.category = category
+                    ex_m.equipment = equipment
+                    ex_m.default_sets = default_sets
+                    ex_m.default_reps = default_reps
+                    ex_m.weight_unit = unit
+                    ex_m.musclewiki_url = mw_url
+                db.commit()
+            except Exception as e:
+                print(f"⚠️ Error guardando ejercicio en Supabase: {e}")
+                db.rollback()
+
+        try:
+            conn = sqlite3.connect(DB_FILE)
+            cursor = conn.cursor()
+            cursor.execute("""
+                INSERT OR REPLACE INTO exercises (id, name, category, equipment, default_sets, default_reps, unit, musclewiki_url)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            """, (ex_id, name, category, equipment, default_sets, default_reps, unit, mw_url))
+            conn.commit()
+            conn.close()
+        except Exception as e:
+            print(f"ℹ️ SQLite save exercise error: {e}")
+
+        return {
+            "id": ex_id, "name": name, "category": category, "equipment": equipment,
+            "defaultSets": default_sets, "defaultReps": default_reps, "unit": unit, "musclewikiUrl": mw_url
+        }
 
     @staticmethod
     def get_state(profile_id: str, db: Optional[Session] = None, has_supabase: bool = False) -> Dict[str, Any]:

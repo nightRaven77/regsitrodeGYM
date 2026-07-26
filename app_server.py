@@ -61,10 +61,29 @@ class SyncPayload(BaseModel):
     workoutHistory: Optional[List[Dict[str, Any]]] = None
     activeSession: Optional[Dict[str, Any]] = None
 
+class ExerciseCreateSchema(BaseModel):
+    id: Optional[str] = None
+    name: str
+    category: str
+    equipment: Optional[str] = "General"
+    defaultSets: Optional[int] = 1
+    defaultReps: Optional[int] = 12
+    unit: Optional[str] = "reps"
+    musclewikiUrl: Optional[str] = None
+
 # --- User & Profile Endpoints ---
 @app.put("/api/user/profile/{user_id}")
 def update_user_profile(user_id: str, payload: UserProfileUpdateSchema, db: Any = Depends(get_db)):
     return StorageRepository.update_user_profile(user_id, name=payload.name, avatar=payload.avatar, db=db, has_supabase=HAS_SUPABASE)
+
+# --- Exercise Catalog Endpoints ---
+@app.get("/api/exercises")
+def get_exercise_catalog(db: Any = Depends(get_db)):
+    return StorageRepository.get_exercises(db=db, has_supabase=HAS_SUPABASE)
+
+@app.post("/api/exercises")
+def create_or_update_exercise(payload: ExerciseCreateSchema, db: Any = Depends(get_db)):
+    return StorageRepository.save_exercise(payload.model_dump(), db=db, has_supabase=HAS_SUPABASE)
 
 # --- Auth Endpoints ---
 @app.post("/api/auth/register")

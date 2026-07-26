@@ -243,10 +243,37 @@ const btnRestMinus15 = document.getElementById('btnRestMinus15');
 const btnRestPlus15 = document.getElementById('btnRestPlus15');
 const btnRestSkip = document.getElementById('btnRestSkip');
 
+async function fetchCatalogFromAPI() {
+  try {
+    const res = await fetch('/api/exercises');
+    if (res.ok) {
+      const data = await res.json();
+      if (data && data.length > 0) {
+        DEFAULT_EXERCISES_CATALOG.length = 0;
+        data.forEach(ex => DEFAULT_EXERCISES_CATALOG.push(ex));
+        localStorage.setItem('gym_catalog_cache', JSON.stringify(DEFAULT_EXERCISES_CATALOG));
+        renderCatalog();
+        setupCatalogFilter();
+      }
+    }
+  } catch (e) {
+    const cached = localStorage.getItem('gym_catalog_cache');
+    if (cached) {
+      try {
+        const data = JSON.parse(cached);
+        DEFAULT_EXERCISES_CATALOG.length = 0;
+        data.forEach(ex => DEFAULT_EXERCISES_CATALOG.push(ex));
+      } catch (err) {}
+    }
+  }
+}
+
 // --- Initialization ---
 document.addEventListener('DOMContentLoaded', () => {
   loadStorageData();
+  fetchCatalogFromAPI();
   setupProfileUI();
+  setupAddExerciseModal();
   setupNavigation();
   refreshCurrentProfileUI();
 
@@ -261,6 +288,68 @@ document.addEventListener('DOMContentLoaded', () => {
     syncToCloudDatabase();
   });
 });
+
+function setupAddExerciseModal() {
+  const btnOpen = document.getElementById('btnOpenAddExerciseModal');
+  const btnClose = document.getElementById('btnCloseAddExerciseModal');
+  const modal = document.getElementById('addExerciseModal');
+  const btnSubmit = document.getElementById('btnSubmitNewExercise');
+
+  if (!btnOpen || !modal) return;
+
+  btnOpen.onclick = () => modal.classList.remove('hidden');
+  if (btnClose) btnClose.onclick = () => modal.classList.add('hidden');
+
+  if (btnSubmit) {
+    btnSubmit.onclick = async () => {
+      const name = document.getElementById('newExName').value.trim();
+      const category = document.getElementById('newExCategory').value;
+      const equipment = document.getElementById('newExEquipment').value.trim() || 'General';
+      const defaultSets = parseInt(document.getElementById('newExSets').value, 10) || 1;
+      const defaultReps = parseInt(document.getElementById('newExReps').value, 10) || 12;
+      const mwUrl = document.getElementById('newExMuscleWiki').value.trim();
+
+      if (!name) {
+        alert('Por favor ingresa el nombre del ejercicio.');
+        return;
+      }
+
+      const payload = {
+        name, category, equipment, defaultSets, defaultReps, unit: 'reps',
+        musclewikiUrl: mwUrl || undefined
+      };
+
+      try {
+        btnSubmit.disabled = true;
+        btnSubmit.textContent = 'Guardando...';
+        const res = await fetch('/api/exercises', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+
+        btnSubmit.disabled = false;
+        btnSubmit.textContent = '✨ Guardar Ejercicio en Base de Datos';
+
+        if (res.ok) {
+          const newEx = await res.json();
+          DEFAULT_EXERCISES_CATALOG.push(newEx);
+          localStorage.setItem('gym_catalog_cache', JSON.stringify(DEFAULT_EXERCISES_CATALOG));
+          renderCatalog();
+          modal.classList.add('hidden');
+          document.getElementById('newExName').value = '';
+          alert(`¡Ejercicio "${newEx.name}" añadido exitosamente a la base de datos!`);
+        } else {
+          alert('Error al guardar el ejercicio en la base de datos.');
+        }
+      } catch (err) {
+        btnSubmit.disabled = false;
+        btnSubmit.textContent = '✨ Guardar Ejercicio en Base de Datos';
+        alert('Error de conexión con el servidor.');
+      }
+    };
+  }
+}
 
 function refreshCurrentProfileUI() {
   updateHeaderProfilePill();
@@ -1234,6 +1323,7 @@ function setupCatalogFilter() {
 
 function renderCatalog(category = 'ALL', searchQuery = '') {
   const catalogList = document.getElementById('catalogList');
+  if (!catalogList) return;
   catalogList.innerHTML = '';
 
   const filtered = DEFAULT_EXERCISES_CATALOG.filter(ex => {
@@ -1242,27 +1332,47 @@ function renderCatalog(category = 'ALL', searchQuery = '') {
     return matchesCat && matchesSearch;
   });
 
-  filtered.forEach(ex => {
-    const card = document.createElement('div');
-    card.className = 'card';
-    card.style.marginBottom = '8px';
-    card.style.padding = '12px 16px';
+  if (filtered.length === 0) {
+    catalogList.innerHTML = '<div style="color: var(--text-muted); font-size: 13px; text-align: center; padding: 20px;">No se encontraron ejercicios en esta categoría.</div>';
+    return;
+  }
 
+  const categoryIcons = {
+    'Pierna': '🦵', 'Pectoral': '🛡️', 'Espalda': '📐', 'Hombro': '⚡',
+    'Bíceps': '🦾', 'Tríceps': '💥', 'Abdomen': '🎯'
+  };
+
+  filtered.forEach(ex => {
+    const icon = categoryIcons[ex.category] || '🏋️';
     const lastHistory = appState.weightsHistory[ex.id];
-    const lastWeightStr = lastHistory ? `${lastHistory.weight} ${lastHistory.unit || 'kg'} (Última vez)` : 'Sin registro de peso';
+    const lastWeightStr = lastHistory ? `${lastHistory.weight} ${lastHistory.unit || 'kg'}` : 'Sin registro de peso';
+    const mwUrl = ex.musclewikiUrl || `https://musclewiki.com/search?q=${encodeURIComponent(ex.name)}`;
+    const equipment = ex.equipment || 'General';
+
+    const card = document.createElement('div');
+    card.className = 'card exercise-catalog-card';
+    card.style.cssText = 'margin-bottom: 12px; display: flex; flex-direction: column; gap: 8px; padding: 14px 16px;';
 
     card.innerHTML = `
-      <div style="display: flex; justify-content: space-between; align-items: center;">
+      <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 8px;">
         <div>
-          <strong style="font-size: 15px; color: #fff;">${ex.name}</strong>
-          <span class="badge badge-${ex.category.toLowerCase()}" style="margin-left: 6px;">${ex.category}</span>
+          <div style="display: flex; align-items: center; gap: 6px;">
+            <span style="font-size: 18px;">${icon}</span>
+            <strong style="font-size: 15px; color: #fff;">${ex.name}</strong>
+          </div>
+          <div style="display: flex; gap: 6px; margin-top: 6px;">
+            <span class="badge badge-${ex.category.toLowerCase()}">${ex.category}</span>
+            <span class="badge" style="background: rgba(255, 255, 255, 0.08); color: var(--text-muted); border: 1px solid var(--border-color);">${equipment}</span>
+          </div>
         </div>
-        <div style="font-size: 12px; color: var(--accent-cyan); font-weight: 600;">
-          ${ex.defaultSets} series x ${ex.defaultReps} ${ex.unit}
-        </div>
+        <a href="${mwUrl}" target="_blank" rel="noopener noreferrer" class="btn btn-secondary btn-sm"
+           style="font-size: 11px; padding: 4px 10px; text-decoration: none; display: flex; align-items: center; gap: 4px; border-color: var(--accent-cyan); color: var(--accent-cyan); white-space: nowrap; font-weight: 600;">
+          📺 Guía MuscleWiki ↗
+        </a>
       </div>
-      <div style="font-size: 11px; color: var(--text-muted); margin-top: 4px;">
-        Carga sugerida: <span style="color: #fff;">${lastWeightStr}</span>
+      <div style="font-size: 11px; color: var(--text-muted); display: flex; justify-content: space-between; align-items: center; background: rgba(0,0,0,0.25); padding: 6px 10px; border-radius: var(--radius-sm); border: 1px solid rgba(255, 255, 255, 0.05);">
+        <span>📊 Carga sugerida: <strong style="color: #fff;">${lastWeightStr}</strong></span>
+        <span>⚡ Serie base: ${ex.defaultSets || 1} x ${ex.defaultReps || 12} ${ex.unit || 'reps'}</span>
       </div>
     `;
     catalogList.appendChild(card);
@@ -1436,10 +1546,13 @@ btnNewRoutine.onclick = () => {
 
 btnCloseEditor.onclick = () => routineEditorCard.classList.add('hidden');
 
+let routineAccordionStateMap = {};
+
 function openRoutineEditor(routine) {
   editingRoutine = JSON.parse(JSON.stringify(routine));
   routineNameInput.value = editingRoutine.name;
   routineEditorCard.classList.remove('hidden');
+  routineAccordionStateMap = {};
   renderDaysInEditor();
 }
 
@@ -1554,6 +1667,12 @@ function renderDaysInEditor() {
       const categoryExercises = DEFAULT_EXERCISES_CATALOG.filter(ex => ex.category.toLowerCase() === cat.toLowerCase());
       const selectedInCat = categoryExercises.filter(ex => day.exerciseIds.includes(ex.id));
 
+      const categoryKey = `${dIdx}_${cat}`;
+      if (routineAccordionStateMap[categoryKey] === undefined) {
+        routineAccordionStateMap[categoryKey] = (selectedInCat.length > 0);
+      }
+      const isExpanded = routineAccordionStateMap[categoryKey] === true;
+
       const groupWrapper = document.createElement('div');
       groupWrapper.style.marginBottom = '6px';
 
@@ -1564,24 +1683,19 @@ function renderDaysInEditor() {
             <span>${icon} ${cat}</span>
             <span class="badge badge-${cat.toLowerCase()}" style="margin-left: 6px;">${selectedInCat.length} / ${categoryExercises.length}</span>
           </div>
-          <span class="accordion-arrow" style="font-size: 10px; color: var(--text-muted);">▼</span>
+          <span class="accordion-arrow" style="font-size: 10px; color: var(--text-muted);">${isExpanded ? '▲' : '▼'}</span>
         </div>
-        <div class="category-group-body collapsed"></div>
+        <div class="category-group-body ${isExpanded ? '' : 'collapsed'}"></div>
       `;
 
       const groupHeader = groupWrapper.querySelector('.category-group-header');
       const groupBody = groupWrapper.querySelector('.category-group-body');
       const arrow = groupWrapper.querySelector('.accordion-arrow');
 
-      // Expand accordion automatically if this muscle has selected exercises
-      if (selectedInCat.length > 0) {
-        groupBody.classList.remove('collapsed');
-        arrow.textContent = '▲';
-      }
-
       groupHeader.onclick = () => {
-        const isCollapsed = groupBody.classList.toggle('collapsed');
-        arrow.textContent = isCollapsed ? '▼' : '▲';
+        const isNowCollapsed = groupBody.classList.toggle('collapsed');
+        arrow.textContent = isNowCollapsed ? '▼' : '▲';
+        routineAccordionStateMap[categoryKey] = !isNowCollapsed;
       };
 
       // Populate exercises for this category
