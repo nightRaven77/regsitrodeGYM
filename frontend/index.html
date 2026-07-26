@@ -284,48 +284,91 @@
   </nav>
 
   <!-- =================================================================== -->
-  <!-- MODAL DE SELECCIÓN Y GESTIÓN DE PERFILES -->
+  <!-- MODAL DE SELECCIÓN Y GESTIÓN DE PERFILES & AUTENTICACIÓN (PROFILE HUB) -->
   <!-- =================================================================== -->
   <div id="profileModal" class="modal-overlay hidden">
-    <div class="modal-card">
+    <div class="profile-hub-card">
+      
+      <!-- Header Bar -->
       <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
-        <h3 style="font-family: var(--font-heading); font-size: 18px; font-weight: 800;">Perfiles de Usuario</h3>
-        <button id="btnCloseProfileModal" class="btn btn-secondary btn-sm">✕</button>
+        <h3 style="font-family: var(--font-heading); font-size: 20px; font-weight: 800; color: #fff;">
+          👤 Mi Perfil & Cuenta
+        </h3>
+        <button id="btnCloseProfileModal" class="btn btn-secondary btn-sm" style="border-radius: 50%; width: 32px; height: 32px; padding: 0;">✕</button>
       </div>
 
-      <p style="color: var(--text-muted); font-size: 13px; margin-bottom: 14px;">
-        Selecciona quién está entrenando hoy para cargar sus rutinas e historial independiente.
-      </p>
-
-      <!-- Profiles List -->
-      <div id="profilesList" style="display: flex; flex-direction: column; gap: 10px; margin-bottom: 16px;">
-        <!-- Populated via JS -->
+      <!-- Active Profile Hero Card -->
+      <div class="profile-avatar-hero">
+        <div id="profileHeroAvatar" class="profile-avatar-badge" title="Toca para cambiar avatar">👨‍🏽‍🦱</div>
+        <div style="flex: 1;">
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <input type="text" id="editProfileNameInput" class="form-control" style="font-weight: 800; font-size: 16px; background: transparent; border: none; border-bottom: 1px dashed var(--accent-cyan); padding: 2px 4px; color: #fff; width: 140px;" placeholder="Tu Nombre">
+            <button id="btnSaveProfileName" class="btn btn-primary btn-sm" style="padding: 2px 8px; font-size: 11px;">Guardar</button>
+          </div>
+          <div id="profileLevelBadge" style="font-size: 11px; color: var(--accent-cyan); margin-top: 4px; font-weight: 600;">
+            🏆 Atleta Dedicado • <span id="profileWorkoutCount">0</span> Sesiones
+          </div>
+        </div>
       </div>
 
-      <!-- Add New Profile Section -->
-      <div style="border-top: 1px solid var(--border-color); padding-top: 14px;">
-        <label class="form-label">Crear Nuevo Perfil:</label>
-        <div style="display: flex; gap: 8px;">
-          <select id="newProfileAvatar" class="form-control" style="width: 70px; font-size: 18px; text-align: center;">
-            <option value="👨‍🏽‍🦱">👨‍🏽‍🦱</option>
-            <option value="👩🏻">👩🏻</option>
-            <option value="⚡">⚡</option>
-            <option value="🏋️‍♂️">🏋️‍♂️</option>
-            <option value="🏋️‍♀️">🏋️‍♀️</option>
-            <option value="🔥">🔥</option>
-            <option value="💪">💪</option>
-          </select>
-          <input type="text" id="newProfileName" class="form-control" placeholder="Nombre (ej: Pareja, Carlos...)">
-          <button id="btnCreateProfile" class="btn btn-primary btn-sm" style="white-space: nowrap;">Crear</button>
+      <!-- Emoji Picker Accordion/Grid (Hidden by default, shown when clicking avatar) -->
+      <div id="avatarPickerGrid" class="emoji-grid-picker hidden">
+        <span class="emoji-picker-item" data-emoji="👨‍🏽‍🦱">👨‍🏽‍🦱</span>
+        <span class="emoji-picker-item" data-emoji="👩🏻">👩🏻</span>
+        <span class="emoji-picker-item" data-emoji="⚡">⚡</span>
+        <span class="emoji-picker-item" data-emoji="🏋️‍♂️">🏋️‍♂️</span>
+        <span class="emoji-picker-item" data-emoji="🏋️‍♀️">🏋️‍♀️</span>
+        <span class="emoji-picker-item" data-emoji="🔥">🔥</span>
+        <span class="emoji-picker-item" data-emoji="💪">💪</span>
+        <span class="emoji-picker-item" data-emoji="🏆">🏆</span>
+        <span class="emoji-picker-item" data-emoji="🦍">🦍</span>
+        <span class="emoji-picker-item" data-emoji="🦁">🦁</span>
+        <span class="emoji-picker-item" data-emoji="🤖">🤖</span>
+        <span class="emoji-picker-item" data-emoji="👑">👑</span>
+      </div>
+
+      <!-- User Auth Section with Segmented Tabs -->
+      <div style="border-top: 1px solid var(--border-color); margin-top: 16px; padding-top: 16px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+          <span style="font-size: 12px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px;">Sincronización Supabase</span>
+          <span id="authCloudStatusBadge" class="badge" style="background: rgba(0, 230, 118, 0.15); color: #00e676; border: 1px solid #00e676;">
+            🟢 Nube Supabase
+          </span>
+        </div>
+
+        <div class="auth-tabs-group">
+          <button id="tabAuthLogin" class="auth-tab-btn active">🔑 Iniciar Sesión</button>
+          <button id="tabAuthRegister" class="auth-tab-btn">✨ Crear Cuenta</button>
+        </div>
+
+        <div id="authFormFields" style="display: flex; flex-direction: column; gap: 8px;">
+          <input type="text" id="authName" class="form-control hidden" placeholder="Nombre Completo (ej: Erick Moreno)">
+          <input type="email" id="authEmail" class="form-control" placeholder="Correo electrónico">
+          <input type="password" id="authPassword" class="form-control" placeholder="Contraseña">
+          <button id="btnSubmitAuth" class="btn btn-primary btn-sm mt-1" style="width: 100%;">
+            Iniciar Sesión con JWT
+          </button>
+        </div>
+        <div id="authStatusMessage" style="font-size: 11px; text-align: center; margin-top: 6px;"></div>
+      </div>
+
+      <!-- Profiles Switcher Section -->
+      <div style="border-top: 1px solid var(--border-color); margin-top: 16px; padding-top: 16px;">
+        <label class="form-label">👥 Cambiar de Perfil en este dispositivo:</label>
+        <div id="profilesList" style="display: flex; flex-direction: column; gap: 8px; margin-bottom: 12px;">
+          <!-- Populated via JS -->
+        </div>
+
+        <!-- Add New Profile Section -->
+        <div style="display: flex; gap: 8px; margin-top: 8px;">
+          <input type="text" id="newProfileName" class="form-control" placeholder="Nuevo Perfil (ej: Pareja, Amigo...)">
+          <button id="btnCreateProfile" class="btn btn-secondary btn-sm" style="white-space: nowrap;">+ Crear</button>
         </div>
       </div>
 
       <!-- Backup & Restore Section -->
-      <div style="border-top: 1px solid var(--border-color); margin-top: 14px; padding-top: 14px;">
-        <label class="form-label">💾 Respaldar y Restaurar Rutinas:</label>
-        <p style="font-size: 11px; color: var(--text-muted); margin-bottom: 8px;">
-          Descarga una copia de seguridad de tus rutinas e historial para evitar perderlas si borras la caché.
-        </p>
+      <div style="border-top: 1px solid var(--border-color); margin-top: 16px; padding-top: 14px;">
+        <label class="form-label">💾 Copia de Seguridad JSON:</label>
         <div style="display: flex; gap: 8px;">
           <button id="btnExportBackup" class="btn btn-secondary btn-sm" style="width: 50%;">📦 Exportar JSON</button>
           <button id="btnImportBackup" class="btn btn-secondary btn-sm" style="width: 50%;">📥 Importar JSON</button>
@@ -333,23 +376,6 @@
         </div>
       </div>
 
-      <!-- User Auth (Login / Register) Section -->
-      <div style="border-top: 1px solid var(--border-color); margin-top: 14px; padding-top: 14px;">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
-          <label class="form-label" style="margin-bottom: 0;">🔐 Cuenta & Sincronización en Nube:</label>
-          <button id="btnToggleAuthMode" class="btn btn-secondary btn-sm" style="font-size: 11px; padding: 2px 6px;">
-            Crear Cuenta
-          </button>
-        </div>
-
-        <div id="authFormContainer" style="display: flex; flex-direction: column; gap: 8px;">
-          <input type="email" id="authEmail" class="form-control" placeholder="Correo electrónico (ej: erick@gym.com)">
-          <input type="password" id="authPassword" class="form-control" placeholder="Contraseña">
-          <input type="text" id="authName" class="form-control hidden" placeholder="Nombre completo (para registro)">
-          <button id="btnSubmitAuth" class="btn btn-primary btn-sm">Iniciar Sesión</button>
-        </div>
-        <div id="authStatusMessage" style="font-size: 11px; color: var(--accent-green); margin-top: 4px;"></div>
-      </div>
     </div>
   </div>
 

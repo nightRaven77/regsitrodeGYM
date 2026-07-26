@@ -72,12 +72,12 @@ function loadStorageData() {
 function loadActiveProfileData() {
   const pId = appState.activeProfileId;
 
-  // 1. Fast load from LocalStorage for instant UI response
+  // 1. Fast load from LocalStorage for instant UI response (Start from 0 default routines)
   const savedRoutines = localStorage.getItem(`gym_routines_${pId}`);
   if (savedRoutines) {
     appState.routines = JSON.parse(savedRoutines);
   } else {
-    appState.routines = [DEFAULT_PRESET_ROUTINE];
+    appState.routines = [];
     localStorage.setItem(`gym_routines_${pId}`, JSON.stringify(appState.routines));
   }
 
@@ -379,8 +379,49 @@ function setupProfileUI() {
     reader.readAsText(file);
   };
 
-  // User Authentication (Login / Register JWT) handlers
-  const btnToggleAuthMode = document.getElementById('btnToggleAuthMode');
+  // Profile Hero Name Save & Avatar Emoji Picker
+  const profileHeroAvatar = document.getElementById('profileHeroAvatar');
+  const avatarPickerGrid = document.getElementById('avatarPickerGrid');
+  const editProfileNameInput = document.getElementById('editProfileNameInput');
+  const btnSaveProfileName = document.getElementById('btnSaveProfileName');
+
+  if (profileHeroAvatar && avatarPickerGrid) {
+    profileHeroAvatar.onclick = () => {
+      avatarPickerGrid.classList.toggle('hidden');
+    };
+
+    avatarPickerGrid.querySelectorAll('.emoji-picker-item').forEach(item => {
+      item.onclick = () => {
+        const emoji = item.getAttribute('data-emoji');
+        const activeProfile = appState.profiles.find(p => p.id === appState.activeProfileId);
+        if (activeProfile) {
+          activeProfile.avatar = emoji;
+          saveProfiles();
+          updateHeaderProfilePill();
+          profileHeroAvatar.textContent = emoji;
+        }
+        avatarPickerGrid.classList.add('hidden');
+      };
+    });
+  }
+
+  if (btnSaveProfileName && editProfileNameInput) {
+    btnSaveProfileName.onclick = () => {
+      const newName = editProfileNameInput.value.trim();
+      if (!newName) return;
+      const activeProfile = appState.profiles.find(p => p.id === appState.activeProfileId);
+      if (activeProfile) {
+        activeProfile.name = newName;
+        saveProfiles();
+        updateHeaderProfilePill();
+        alert('¡Nombre de perfil actualizado!');
+      }
+    };
+  }
+
+  // Segmented Auth Tabs (Login vs Register)
+  const tabAuthLogin = document.getElementById('tabAuthLogin');
+  const tabAuthRegister = document.getElementById('tabAuthRegister');
   const authEmail = document.getElementById('authEmail');
   const authPassword = document.getElementById('authPassword');
   const authName = document.getElementById('authName');
@@ -389,13 +430,23 @@ function setupProfileUI() {
 
   let isRegisterMode = false;
 
-  if (btnToggleAuthMode) {
-    btnToggleAuthMode.onclick = () => {
-      isRegisterMode = !isRegisterMode;
-      btnToggleAuthMode.textContent = isRegisterMode ? 'Iniciar Sesión' : 'Crear Cuenta';
-      btnSubmitAuth.textContent = isRegisterMode ? 'Registrar Cuenta' : 'Iniciar Sesión';
-      authName.classList.toggle('hidden', !isRegisterMode);
-      authStatusMessage.textContent = '';
+  if (tabAuthLogin && tabAuthRegister) {
+    tabAuthLogin.onclick = () => {
+      isRegisterMode = false;
+      tabAuthLogin.classList.add('active');
+      tabAuthRegister.classList.remove('active');
+      authName.classList.add('hidden');
+      btnSubmitAuth.textContent = 'Iniciar Sesión con JWT';
+      if (authStatusMessage) authStatusMessage.textContent = '';
+    };
+
+    tabAuthRegister.onclick = () => {
+      isRegisterMode = true;
+      tabAuthRegister.classList.add('active');
+      tabAuthLogin.classList.remove('active');
+      authName.classList.remove('hidden');
+      btnSubmitAuth.textContent = 'Registrar Cuenta en Supabase';
+      if (authStatusMessage) authStatusMessage.textContent = '';
     };
   }
 
@@ -415,9 +466,11 @@ function setupProfileUI() {
         return;
       }
 
+      const activeProfile = appState.profiles.find(p => p.id === appState.activeProfileId);
+      const currentAvatar = activeProfile ? activeProfile.avatar : '👨‍🏽‍🦱';
       const endpoint = isRegisterMode ? '/api/auth/register' : '/api/auth/login';
       const bodyPayload = isRegisterMode 
-        ? { email, password, name, avatar: '👨‍🏽‍🦱' } 
+        ? { email, password, name, avatar: currentAvatar } 
         : { email, password };
 
       try {
@@ -432,7 +485,7 @@ function setupProfileUI() {
 
         const data = await res.json();
         btnSubmitAuth.disabled = false;
-        btnSubmitAuth.textContent = isRegisterMode ? 'Registrar Cuenta' : 'Iniciar Sesión';
+        btnSubmitAuth.textContent = isRegisterMode ? 'Registrar Cuenta en Supabase' : 'Iniciar Sesión con JWT';
 
         if (!res.ok) {
           alert(data.detail || 'Error en la autenticación.');
@@ -446,7 +499,7 @@ function setupProfileUI() {
             const userProfile = {
               id: data.user.id,
               name: data.user.name,
-              avatar: data.user.avatar || '👨‍🏽‍🦱'
+              avatar: data.user.avatar || currentAvatar
             };
 
             if (!appState.profiles.some(p => p.id === userProfile.id)) {
@@ -455,7 +508,8 @@ function setupProfileUI() {
             switchProfile(userProfile.id);
           }
 
-          authStatusMessage.textContent = isRegisterMode ? '¡Cuenta creada con éxito! Sincronizando...' : '¡Sesión iniciada! Sincronizando...';
+          authStatusMessage.style.color = '#00e676';
+          authStatusMessage.textContent = isRegisterMode ? '¡Cuenta creada en Supabase! Sincronizando...' : '¡Sesión JWT iniciada! Sincronizando...';
           setTimeout(() => {
             profileModal.classList.add('hidden');
             authStatusMessage.textContent = '';
@@ -463,7 +517,7 @@ function setupProfileUI() {
         }
       } catch (err) {
         btnSubmitAuth.disabled = false;
-        btnSubmitAuth.textContent = isRegisterMode ? 'Registrar Cuenta' : 'Iniciar Sesión';
+        btnSubmitAuth.textContent = isRegisterMode ? 'Registrar Cuenta en Supabase' : 'Iniciar Sesión con JWT';
         alert('Error conectando con el servidor de autenticación.');
       }
     };
@@ -477,6 +531,15 @@ function updateHeaderProfilePill() {
 }
 
 function renderProfilesModal() {
+  const activeProfile = appState.profiles.find(p => p.id === appState.activeProfileId) || appState.profiles[0];
+  const profileHeroAvatar = document.getElementById('profileHeroAvatar');
+  const editProfileNameInput = document.getElementById('editProfileNameInput');
+  const profileWorkoutCount = document.getElementById('profileWorkoutCount');
+
+  if (profileHeroAvatar) profileHeroAvatar.textContent = activeProfile.avatar;
+  if (editProfileNameInput) editProfileNameInput.value = activeProfile.name;
+  if (profileWorkoutCount) profileWorkoutCount.textContent = appState.workoutHistory ? appState.workoutHistory.length : 0;
+
   profilesList.innerHTML = '';
   appState.profiles.forEach(p => {
     const isCurrent = p.id === appState.activeProfileId;
@@ -1264,10 +1327,25 @@ function renderRoutinesList() {
   routinesListContainer.innerHTML = '';
   if (!appState.routines || appState.routines.length === 0) {
     routinesListContainer.innerHTML = `
-      <div style="color: var(--text-muted); font-size: 13px; text-align: center; padding: 20px;">
-        No tienes ninguna rutina configurada. Toca <strong>"+ Nueva"</strong> arriba para armar tu rutina personalizada desde 0.
+      <div class="empty-routines-card">
+        <div class="empty-icon">🏋️‍♂️</div>
+        <h3>¡Tu Gimnasio, Tu Regla! 💪</h3>
+        <p>Todos los usuarios empiezan desde 0. Crea tu primera rutina personalizada agregando tus días y ejercicios a tu gusto.</p>
+        <button id="btnCreateFirstRoutine" class="btn btn-primary btn-lg mt-2" style="width: 100%;">
+          ⚡ Crear mi Primera Rutina
+        </button>
       </div>
     `;
+    const btn = document.getElementById('btnCreateFirstRoutine');
+    if (btn) {
+      btn.onclick = () => {
+        openRoutineEditor({
+          id: 'routine_' + Date.now(),
+          name: 'Mi Rutina Personalizada',
+          days: [{ dayName: 'Día 1: Mi primer día', exerciseIds: [] }]
+        });
+      };
+    }
     return;
   }
 
