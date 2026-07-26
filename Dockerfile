@@ -12,5 +12,5 @@ COPY . .
 # Exponer puerto por defecto
 EXPOSE 8000
 
-# Ejecutar Uvicorn usando app_server:app a nivel raíz
-CMD ["sh", "-c", "uvicorn app_server:app --host 0.0.0.0 --port ${PORT:-8000}"]
+# Ejecutar la aplicación con python3 main.py para procesar el puerto dinámico de Railway de forma segura
+CMD ["python3", "main.py"]
