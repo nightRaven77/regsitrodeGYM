@@ -859,6 +859,23 @@ function confirmEndWorkout() {
     });
   });
 
+  // Extract detailed sets data for each exercise
+  const detailedExercises = appState.activeSession.exercises.map(ex => {
+    const completedSets = (appState.activeSession.setsData[ex.id] || [])
+      .filter(s => s.completed)
+      .map(s => ({
+        setNum: s.setNum,
+        weight: s.weight,
+        actualReps: s.actualReps
+      }));
+    return {
+      name: ex.name,
+      category: ex.category,
+      unit: ex.unit || 'reps',
+      sets: completedSets
+    };
+  }).filter(ex => ex.sets.length > 0);
+
   const workoutRecord = {
     id: 'work_' + Date.now(),
     dateFormatted: new Date().toLocaleDateString([], { weekday: 'short', day: 'numeric', month: 'short' }),
@@ -871,7 +888,8 @@ function confirmEndWorkout() {
       name: ex.name,
       category: ex.category,
       completedSets: appState.activeSession.setsData[ex.id].filter(s => s.completed).length
-    }))
+    })),
+    detailedExercises: detailedExercises
   };
 
   appState.workoutHistory.unshift(workoutRecord);
@@ -962,18 +980,100 @@ function renderHistory() {
     item.className = 'history-item card';
     item.style.marginBottom = '12px';
 
+    const hasDetails = record.detailedExercises && record.detailedExercises.length > 0;
+
     item.innerHTML = `
       <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
         <strong style="font-size: 16px; color: #fff;">${record.dayName}</strong>
-        <span style="font-size: 11px; color: var(--accent-cyan);">${record.dateFormatted} • ${record.timeFormatted}</span>
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <span style="font-size: 11px; color: var(--accent-cyan);">${record.dateFormatted} • ${record.timeFormatted}</span>
+          <button class="btn btn-danger btn-sm del-log-btn" style="padding: 2px 6px; font-size: 11px;">🗑️</button>
+        </div>
       </div>
+
       <div style="font-size: 12px; color: var(--text-muted); margin-bottom: 8px;">
         ⏱️ Duración: <strong>${mins} min</strong> • 🏋️ Series: <strong>${record.totalSets}</strong> • 📊 Vol: <strong>${record.totalVolumeKg} kg</strong>
       </div>
-      <div style="font-size: 11px; color: var(--text-muted);">
-        Ejercicios: ${record.exercisesSummary.map(e => `${e.name} (${e.completedSets} series)`).join(', ')}
+
+      <div style="display: flex; justify-content: space-between; align-items: center;">
+        <div style="font-size: 11px; color: var(--text-muted); text-overflow: ellipsis; overflow: hidden; white-space: nowrap;">
+          ${record.exercisesSummary ? record.exercisesSummary.map(e => `${e.name}`).join(', ') : ''}
+        </div>
+        <span class="toggle-detail-label" style="font-size: 11px; color: var(--accent-cyan); font-weight: 700; white-space: nowrap; margin-left: 10px;">
+          Ver Detalle ▼
+        </span>
+      </div>
+
+      <div class="history-detail-drawer hidden">
+        <div style="font-size: 12px; font-weight: 700; color: #fff; margin-bottom: 8px;">
+          📋 Desglose de Ejercicios y Series:
+        </div>
+        <div class="detail-exercises-list"></div>
       </div>
     `;
+
+    // Delete Log Button Handler
+    const delLogBtn = item.querySelector('.del-log-btn');
+    delLogBtn.onclick = (e) => {
+      e.stopPropagation();
+      if (confirm('¿Borrar este registro del historial?')) {
+        appState.workoutHistory = appState.workoutHistory.filter(h => h.id !== record.id);
+        saveWorkoutHistory();
+        renderHistory();
+      }
+    };
+
+    // Toggle Drawer Handler
+    const drawer = item.querySelector('.history-detail-drawer');
+    const toggleLabel = item.querySelector('.toggle-detail-label');
+    const detailList = item.querySelector('.detail-exercises-list');
+
+    item.onclick = (e) => {
+      if (e.target.closest('.del-log-btn')) return;
+
+      const isHidden = drawer.classList.toggle('hidden');
+      toggleLabel.textContent = isHidden ? 'Ver Detalle ▼' : 'Ocultar Detalle ▲';
+
+      if (!isHidden && detailList.children.length === 0) {
+        if (hasDetails) {
+          record.detailedExercises.forEach(ex => {
+            const exBlock = document.createElement('div');
+            exBlock.className = 'history-detail-exercise';
+            
+            const setsHtml = ex.sets.map(s => 
+              `<span class="history-set-tag">S${s.setNum}: <strong>${s.weight} kg</strong> × ${s.actualReps} ${ex.unit || 'reps'}</span>`
+            ).join('');
+
+            exBlock.innerHTML = `
+              <div style="display: flex; justify-content: space-between; align-items: center;">
+                <strong style="font-size: 13px; color: #fff;">${ex.name}</strong>
+                <span class="badge badge-${ex.category.toLowerCase()}">${ex.category}</span>
+              </div>
+              <div style="display: flex; flex-wrap: wrap; margin-top: 4px;">
+                ${setsHtml}
+              </div>
+            `;
+            detailList.appendChild(exBlock);
+          });
+        } else if (record.exercisesSummary) {
+          record.exercisesSummary.forEach(ex => {
+            const exBlock = document.createElement('div');
+            exBlock.className = 'history-detail-exercise';
+            exBlock.innerHTML = `
+              <div style="display: flex; justify-content: space-between; align-items: center;">
+                <strong style="font-size: 13px; color: #fff;">${ex.name}</strong>
+                <span class="badge badge-${ex.category.toLowerCase()}">${ex.category}</span>
+              </div>
+              <div style="font-size: 11px; color: var(--text-muted); margin-top: 2px;">
+                ${ex.completedSets} series completadas
+              </div>
+            `;
+            detailList.appendChild(exBlock);
+          });
+        }
+      }
+    };
+
     historyLogsContainer.appendChild(item);
   });
 }
