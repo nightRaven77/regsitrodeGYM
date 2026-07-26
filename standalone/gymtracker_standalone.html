@@ -484,6 +484,43 @@ body {
   color: var(--accent-cyan);
 }
 
+/* Unit Toggle (kg / lb) & Conversion Badge */
+.unit-toggle-group {
+  display: flex;
+  background: var(--bg-input);
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  padding: 2px;
+  gap: 2px;
+}
+
+.btn-unit-toggle {
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  font-size: 11px;
+  font-weight: 700;
+  padding: 3px 8px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.btn-unit-toggle.active {
+  background: var(--accent-cyan);
+  color: #000;
+  box-shadow: 0 0 8px rgba(0, 242, 254, 0.4);
+}
+
+.conversion-badge {
+  font-size: 10px;
+  color: var(--accent-green);
+  font-weight: 600;
+  text-align: center;
+  margin-top: 2px;
+  white-space: nowrap;
+}
+
 /* Add / Remove Set buttons in Live Workout */
 .set-controls-bar {
   display: flex;
@@ -1011,6 +1048,55 @@ body {
           <!-- Populated via JS -->
         </div>
       </div>
+    <!-- =================================================================== -->
+    <!-- TAB 5: ANALÍTICA Y PROGRESO (Chart.js Dashboard) -->
+    <!-- =================================================================== -->
+    <section id="tab-analytics" class="tab-content">
+      <!-- PRs Summary Card -->
+      <div class="card">
+        <div class="card-title">
+          <span>🏆 Récords Personales (PRs)</span>
+        </div>
+        <div id="prsContainer" style="display: flex; gap: 8px; overflow-x: auto; padding-bottom: 4px;">
+          <!-- Populated via JS -->
+        </div>
+      </div>
+
+      <!-- Progressive Overload Chart -->
+      <div class="card">
+        <div class="card-title" style="flex-wrap: wrap; gap: 6px;">
+          <span>📈 Sobrecarga Progresiva</span>
+        </div>
+        <div class="form-group" style="margin-bottom: 10px;">
+          <label class="form-label">Seleccionar Ejercicio:</label>
+          <select id="analyticsExSelect" class="form-control">
+            <!-- Populated via JS -->
+          </select>
+        </div>
+        <div style="position: relative; height: 220px; width: 100%;">
+          <canvas id="overloadChartCanvas"></canvas>
+        </div>
+      </div>
+
+      <!-- Weekly Volume Chart -->
+      <div class="card">
+        <div class="card-title">
+          <span>📊 Volumen Semanal (kg)</span>
+        </div>
+        <div style="position: relative; height: 200px; width: 100%;">
+          <canvas id="weeklyVolumeCanvas"></canvas>
+        </div>
+      </div>
+
+      <!-- Muscle Group Distribution -->
+      <div class="card">
+        <div class="card-title">
+          <span>🎯 Enfoque por Grupo Muscular</span>
+        </div>
+        <div style="position: relative; height: 210px; width: 100%;">
+          <canvas id="muscleDistributionCanvas"></canvas>
+        </div>
+      </div>
     </section>
 
   </main>
@@ -1049,6 +1135,10 @@ body {
     <button class="nav-item" data-tab="tab-history">
       <svg viewBox="0 0 24 24"><path d="M13 3c-4.97 0-9 4.03-9 9H1l3.89 3.89.07.14L9 12H6c0-3.87 3.13-7 7-7s7 3.13 7 7-3.13 7-7 7c-1.93 0-3.68-.79-4.94-2.06l-1.42 1.42C8.27 19.99 10.51 21 13 21c4.97 0 9-4.03 9-9s-4.03-9-9-9zm-1 5v5l4.28 2.54.72-1.21-3.5-2.08V8H12z"/></svg>
       <span>Historial</span>
+    </button>
+    <button class="nav-item" data-tab="tab-analytics">
+      <svg viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zM9 17H7v-7h2v7zm4 0h-2V7h2v10zm4 0h-2v-4h2v4z"/></svg>
+      <span>Progreso</span>
     </button>
   </nav>
 
@@ -1104,7 +1194,7 @@ body {
     </div>
   </div>
 
-  <!-- Load Data & Logic Scripts -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script>
 // Catálogo Oficial de Ejercicios extraído de CenterFit mx Gimnasio (Todas las rutinas inician con 1 serie por defecto)
 
@@ -1481,6 +1571,10 @@ function refreshCurrentProfileUI() {
   renderHistory();
   renderRoutinesList();
 
+  if (typeof initAnalytics === 'function') {
+    initAnalytics();
+  }
+
   if (appState.activeSession) {
     resumeActiveSessionUI();
   } else {
@@ -1696,7 +1790,12 @@ function setupNavigation() {
       tabContents.forEach(t => t.classList.remove('active'));
 
       item.classList.add('active');
-      document.getElementById(targetTab).classList.add('active');
+      const targetEl = document.getElementById(targetTab);
+      if (targetEl) targetEl.classList.add('active');
+
+      if (targetTab === 'tab-analytics' && typeof renderAnalyticsDashboard === 'function') {
+        renderAnalyticsDashboard();
+      }
     });
   });
 }
@@ -1883,7 +1982,8 @@ function renderLiveExercisesCards() {
     const sets = appState.activeSession.setsData[ex.id] || [];
     const allDone = sets.every(s => s.completed);
     const lastHistory = appState.weightsHistory[ex.id];
-    const lastWeightStr = lastHistory ? `(Último: ${lastHistory.weight} kg)` : '';
+    const unit = ex.weightUnit || 'kg';
+    const lastWeightStr = lastHistory ? `(Último: ${lastHistory.weight} ${lastHistory.unit || 'kg'})` : '';
 
     const card = document.createElement('div');
     card.className = `exercise-live-card ${allDone ? 'completed' : ''}`;
@@ -1893,36 +1993,64 @@ function renderLiveExercisesCards() {
           <span>${ex.name}</span>
           <span class="badge badge-${ex.category.toLowerCase()}" style="margin-left: 6px;">${ex.category}</span>
         </div>
-        <div style="font-size: 11px; color: var(--accent-cyan); font-weight: 500;">
-          ${lastWeightStr}
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <div style="font-size: 11px; color: var(--accent-cyan); font-weight: 500;">
+            ${lastWeightStr}
+          </div>
+          <div class="unit-toggle-group">
+            <button class="btn-unit-toggle ${unit === 'kg' ? 'active' : ''}" data-unit="kg">kg</button>
+            <button class="btn-unit-toggle ${unit === 'lb' ? 'active' : ''}" data-unit="lb">lb</button>
+          </div>
         </div>
       </div>
       <div id="setsContainer_${ex.id}"></div>
     `;
 
+    // Unit toggle buttons (kg vs lb) handler
+    card.querySelectorAll('.btn-unit-toggle').forEach(btn => {
+      btn.onclick = () => {
+        ex.weightUnit = btn.getAttribute('data-unit');
+        saveActiveSession();
+        renderLiveExercisesCards();
+      };
+    });
+
     liveExercisesContainer.appendChild(card);
     const setsContainer = card.querySelector(`#setsContainer_${ex.id}`);
 
     sets.forEach(set => {
+      const weightVal = set.weight || 0;
+      let comparativeText = '';
+      if (unit === 'kg') {
+        const lbVal = (weightVal * 2.20462).toFixed(1);
+        comparativeText = `≈ ${lbVal} lb`;
+      } else {
+        const kgVal = (weightVal * 0.453592).toFixed(1);
+        comparativeText = `≈ ${kgVal} kg`;
+      }
+
       const row = document.createElement('div');
       row.className = 'set-row';
-      row.style.gridTemplateColumns = '32px 1.2fr 1.4fr 44px';
+      row.style.gridTemplateColumns = '32px 1.3fr 1.3fr 44px';
       row.innerHTML = `
         <div class="set-number">S${set.setNum}</div>
         
-        <!-- Weight Input + Stepper -->
+        <!-- Weight Input + Stepper + Comparative Conversion -->
         <div class="set-input-group">
-          <label class="set-input-label">Peso (kg)</label>
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2px;">
+            <label class="set-input-label">Peso (${unit})</label>
+            <span class="conversion-badge">${comparativeText}</span>
+          </div>
           <div class="stepper-group">
             <button class="btn-step btn-weight-minus" ${set.completed ? 'disabled' : ''}>-</button>
-            <input type="number" step="0.5" class="set-input weight-input" value="${set.weight}" ${set.completed ? 'disabled' : ''}>
+            <input type="number" step="${unit === 'lb' ? '5' : '0.5'}" class="set-input weight-input" value="${set.weight}" ${set.completed ? 'disabled' : ''}>
             <button class="btn-step btn-weight-plus" ${set.completed ? 'disabled' : ''}>+</button>
           </div>
         </div>
 
         <!-- Reps Input + Stepper -->
         <div class="set-input-group">
-          <label class="set-input-label">Reps (${ex.unit})</label>
+          <label class="set-input-label" style="margin-bottom: 2px;">Reps (${ex.unit})</label>
           <div class="stepper-group">
             <button class="btn-step btn-reps-minus" ${set.completed ? 'disabled' : ''}>-</button>
             <input type="number" class="set-input reps-input" value="${set.actualReps}" ${set.completed ? 'disabled' : ''}>
@@ -1938,21 +2066,34 @@ function renderLiveExercisesCards() {
       const weightInput = row.querySelector('.weight-input');
       const repsInput = row.querySelector('.reps-input');
       const btnCheck = row.querySelector('.btn-check-set');
+      const conversionBadge = row.querySelector('.conversion-badge');
 
       const btnWeightMinus = row.querySelector('.btn-weight-minus');
       const btnWeightPlus = row.querySelector('.btn-weight-plus');
       const btnRepsMinus = row.querySelector('.btn-reps-minus');
       const btnRepsPlus = row.querySelector('.btn-reps-plus');
 
+      const updateConversion = (w) => {
+        if (unit === 'kg') {
+          conversionBadge.textContent = `≈ ${(w * 2.20462).toFixed(1)} lb`;
+        } else {
+          conversionBadge.textContent = `≈ ${(w * 0.453592).toFixed(1)} kg`;
+        }
+      };
+
+      const weightStep = unit === 'lb' ? 5 : 2.5;
+
       btnWeightMinus.onclick = () => {
-        set.weight = Math.max(0, parseFloat((set.weight - 2.5).toFixed(1)));
+        set.weight = Math.max(0, parseFloat((set.weight - weightStep).toFixed(1)));
         weightInput.value = set.weight;
+        updateConversion(set.weight);
         saveActiveSession();
       };
 
       btnWeightPlus.onclick = () => {
-        set.weight = parseFloat((set.weight + 2.5).toFixed(1));
+        set.weight = parseFloat((set.weight + weightStep).toFixed(1));
         weightInput.value = set.weight;
+        updateConversion(set.weight);
         saveActiveSession();
       };
 
@@ -1968,8 +2109,9 @@ function renderLiveExercisesCards() {
         saveActiveSession();
       };
 
-      weightInput.addEventListener('change', (e) => {
+      weightInput.addEventListener('input', (e) => {
         set.weight = parseFloat(e.target.value) || 0;
+        updateConversion(set.weight);
         saveActiveSession();
       });
 
@@ -1984,15 +2126,13 @@ function renderLiveExercisesCards() {
         set.completed = !set.completed;
 
         if (set.completed) {
-          // Update last known weight memory for this exercise
           appState.weightsHistory[ex.id] = {
             weight: set.weight,
+            unit: unit,
             reps: set.actualReps,
             date: new Date().toISOString()
           };
           saveWeightsHistory();
-
-          // Start 60s Rest Timer
           triggerRestTimer(60);
         }
 
@@ -2091,28 +2231,38 @@ function confirmEndWorkout() {
   let totalVolumeKg = 0;
 
   Object.keys(appState.activeSession.setsData).forEach(exId => {
+    const ex = appState.activeSession.exercises.find(e => e.id === exId);
+    const unit = ex ? (ex.weightUnit || 'kg') : 'kg';
     const sets = appState.activeSession.setsData[exId];
     sets.forEach(set => {
       if (set.completed) {
         totalSetsCompleted += 1;
-        totalVolumeKg += (set.weight * set.actualReps);
+        const weightKg = (unit === 'lb') ? (set.weight * 0.453592) : set.weight;
+        totalVolumeKg += (weightKg * set.actualReps);
       }
     });
   });
 
-  // Extract detailed sets data for each exercise
+  // Extract detailed sets data for each exercise with unit metadata
   const detailedExercises = appState.activeSession.exercises.map(ex => {
+    const unit = ex.weightUnit || 'kg';
     const completedSets = (appState.activeSession.setsData[ex.id] || [])
       .filter(s => s.completed)
-      .map(s => ({
-        setNum: s.setNum,
-        weight: s.weight,
-        actualReps: s.actualReps
-      }));
+      .map(s => {
+        const weightKg = (unit === 'lb') ? (s.weight * 0.453592) : s.weight;
+        return {
+          setNum: s.setNum,
+          weight: s.weight,
+          weightUnit: unit,
+          weightKg: parseFloat(weightKg.toFixed(1)),
+          actualReps: s.actualReps
+        };
+      });
     return {
       name: ex.name,
       category: ex.category,
       unit: ex.unit || 'reps',
+      weightUnit: unit,
       sets: completedSets
     };
   }).filter(ex => ex.sets.length > 0);
@@ -2124,7 +2274,7 @@ function confirmEndWorkout() {
     dayName: appState.activeSession.dayName,
     durationSeconds: appState.activeSession.elapsedSeconds,
     totalSets: totalSetsCompleted,
-    totalVolumeKg: totalVolumeKg,
+    totalVolumeKg: Math.round(totalVolumeKg),
     exercisesSummary: appState.activeSession.exercises.map(ex => ({
       name: ex.name,
       category: ex.category,
@@ -2187,7 +2337,7 @@ function renderCatalog(category = 'ALL', searchQuery = '') {
     card.style.padding = '12px 16px';
 
     const lastHistory = appState.weightsHistory[ex.id];
-    const lastWeightStr = lastHistory ? `${lastHistory.weight} kg (Última vez)` : 'Sin registro de peso';
+    const lastWeightStr = lastHistory ? `${lastHistory.weight} ${lastHistory.unit || 'kg'} (Última vez)` : 'Sin registro de peso';
 
     card.innerHTML = `
       <div style="display: flex; justify-content: space-between; align-items: center;">
@@ -2283,9 +2433,13 @@ function renderHistory() {
             const exBlock = document.createElement('div');
             exBlock.className = 'history-detail-exercise';
             
-            const setsHtml = ex.sets.map(s => 
-              `<span class="history-set-tag">S${s.setNum}: <strong>${s.weight} kg</strong> × ${s.actualReps} ${ex.unit || 'reps'}</span>`
-            ).join('');
+            const setsHtml = ex.sets.map(s => {
+              const u = s.weightUnit || 'kg';
+              const altUnitText = (u === 'lb') 
+                ? `(≈ ${(s.weight * 0.453592).toFixed(1)} kg)` 
+                : `(≈ ${(s.weight * 2.20462).toFixed(1)} lb)`;
+              return `<span class="history-set-tag">S${s.setNum}: <strong>${s.weight} ${u}</strong> <span style="font-size:10px; color:var(--accent-green);">${altUnitText}</span> × ${s.actualReps} ${ex.unit || 'reps'}</span>`;
+            }).join('');
 
             exBlock.innerHTML = `
               <div style="display: flex; justify-content: space-between; align-items: center;">
@@ -2590,6 +2744,284 @@ btnSaveRoutine.onclick = () => {
   routineEditorCard.classList.add('hidden');
   alert('¡Rutina guardada con éxito!');
 };
+
+
+// ==========================================================================
+// GymTracker Analytics & Progress Module (Chart.js Integration)
+// ==========================================================================
+
+let overloadChart = null;
+let weeklyVolumeChart = null;
+let muscleDistributionChart = null;
+
+// Formula for Estimated 1RM (Epley Formula): 1RM = Weight * (1 + Reps / 30)
+function calculate1RM(weight, reps) {
+  if (!weight || weight <= 0) return 0;
+  if (!reps || reps <= 0) return weight;
+  if (reps === 1) return weight;
+  return Math.round(weight * (1 + reps / 30));
+}
+
+function initAnalytics() {
+  const analyticsExSelect = document.getElementById('analyticsExSelect');
+  if (!analyticsExSelect) return;
+
+  // Populate exercise selector for progressive overload chart
+  analyticsExSelect.innerHTML = '';
+  DEFAULT_EXERCISES_CATALOG.forEach(ex => {
+    const option = document.createElement('option');
+    option.value = ex.id;
+    option.textContent = `${ex.name} (${ex.category})`;
+    analyticsExSelect.appendChild(option);
+  });
+
+  analyticsExSelect.onchange = (e) => {
+    renderOverloadChart(e.target.value);
+  };
+
+  renderAnalyticsDashboard();
+}
+
+function renderAnalyticsDashboard() {
+  renderPRsSummary();
+  
+  const analyticsExSelect = document.getElementById('analyticsExSelect');
+  const selectedExId = analyticsExSelect ? analyticsExSelect.value : DEFAULT_EXERCISES_CATALOG[0].id;
+  renderOverloadChart(selectedExId);
+  
+  renderWeeklyVolumeChart();
+  renderMuscleDistributionChart();
+}
+
+// 1. Personal Records (PRs) Cards
+function renderPRsSummary() {
+  const prsContainer = document.getElementById('prsContainer');
+  if (!prsContainer) return;
+  prsContainer.innerHTML = '';
+
+  const prsMap = {};
+
+  // Traversal of completed workout history
+  if (appState.workoutHistory && appState.workoutHistory.length > 0) {
+    appState.workoutHistory.forEach(record => {
+      if (record.detailedExercises) {
+        record.detailedExercises.forEach(ex => {
+          if (!prsMap[ex.name]) {
+            prsMap[ex.name] = { maxWeight: 0, max1RM: 0, category: ex.category };
+          }
+          ex.sets.forEach(set => {
+            if (set.weight > prsMap[ex.name].maxWeight) {
+              prsMap[ex.name].maxWeight = set.weight;
+            }
+            const e1RM = calculate1RM(set.weight, set.actualReps);
+            if (e1RM > prsMap[ex.name].max1RM) {
+              prsMap[ex.name].max1RM = e1RM;
+            }
+          });
+        });
+      }
+    });
+  }
+
+  const topPRs = Object.keys(prsMap)
+    .map(name => ({ name, ...prsMap[name] }))
+    .filter(pr => pr.maxWeight > 0)
+    .sort((a, b) => b.maxWeight - a.maxWeight)
+    .slice(0, 4);
+
+  if (topPRs.length === 0) {
+    prsContainer.innerHTML = '<div style="color: var(--text-muted); font-size: 12px; text-align: center; width: 100%;">Registra tus entrenamientos en vivo para desbloquear tus Récords Personales (PRs).</div>';
+    return;
+  }
+
+  topPRs.forEach(pr => {
+    const card = document.createElement('div');
+    card.style.cssText = 'background: var(--bg-input); border: 1px solid var(--glass-border); border-radius: var(--radius-sm); padding: 10px 12px; flex: 1; min-width: 130px; text-align: center;';
+    card.innerHTML = `
+      <div style="font-size: 11px; color: var(--text-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${pr.name}</div>
+      <div style="font-family: var(--font-heading); font-size: 20px; font-weight: 800; color: var(--accent-cyan); margin: 2px 0;">
+        ${pr.maxWeight} <span style="font-size: 12px; font-weight: 600; color: #fff;">kg</span>
+      </div>
+      <div style="font-size: 10px; color: var(--accent-green);">1RM Est: ${pr.max1RM} kg</div>
+    `;
+    prsContainer.appendChild(card);
+  });
+}
+
+// 2. Progressive Overload Chart (1RM & Max Weight vs Date)
+function renderOverloadChart(exerciseId) {
+  const canvas = document.getElementById('overloadChartCanvas');
+  if (!canvas) return;
+
+  const targetEx = DEFAULT_EXERCISES_CATALOG.find(ex => ex.id === exerciseId);
+  const exName = targetEx ? targetEx.name : '';
+
+  const labels = [];
+  const maxWeights = [];
+  const est1RMs = [];
+
+  if (appState.workoutHistory && appState.workoutHistory.length > 0) {
+    // Traverse from oldest to newest for chronological chart line
+    [...appState.workoutHistory].reverse().forEach(record => {
+      if (record.detailedExercises) {
+        const foundEx = record.detailedExercises.find(e => e.name.toLowerCase() === exName.toLowerCase());
+        if (foundEx && foundEx.sets.length > 0) {
+          let dayMaxW = 0;
+          let dayMax1RM = 0;
+
+          foundEx.sets.forEach(s => {
+            if (s.weight > dayMaxW) dayMaxW = s.weight;
+            const e1RM = calculate1RM(s.weight, s.actualReps);
+            if (e1RM > dayMax1RM) dayMax1RM = e1RM;
+          });
+
+          if (dayMaxW > 0) {
+            labels.push(record.dateFormatted);
+            maxWeights.push(dayMaxW);
+            est1RMs.push(dayMax1RM);
+          }
+        }
+      }
+    });
+  }
+
+  if (typeof Chart === 'undefined') {
+    canvas.parentElement.innerHTML = '<div style="color: var(--text-muted); font-size: 12px; text-align: center; padding: 20px;">Chart.js cargando o no disponible sin conexión.</div>';
+    return;
+  }
+
+  if (overloadChart) overloadChart.destroy();
+
+  const ctx = canvas.getContext('2d');
+  overloadChart = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: labels.length > 0 ? labels : ['Sesión 1', 'Sesión 2', 'Sesión 3'],
+      datasets: [
+        {
+          label: 'Peso Máximo (kg)',
+          data: maxWeights.length > 0 ? maxWeights : [0, 0, 0],
+          borderColor: '#00f2fe',
+          backgroundColor: 'rgba(0, 242, 254, 0.1)',
+          fill: true,
+          tension: 0.3,
+          pointRadius: 5
+        },
+        {
+          label: '1RM Estimado (kg)',
+          data: est1RMs.length > 0 ? est1RMs : [0, 0, 0],
+          borderColor: '#00e676',
+          borderDash: [5, 5],
+          tension: 0.3,
+          pointRadius: 4
+        }
+      ]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { labels: { color: '#f0f4f8', font: { family: 'Plus Jakarta Sans', size: 11 } } }
+      },
+      scales: {
+        x: { ticks: { color: '#8e9bb0' }, grid: { color: 'rgba(255, 255, 255, 0.05)' } },
+        y: { ticks: { color: '#8e9bb0' }, grid: { color: 'rgba(255, 255, 255, 0.05)' }, beginAtZero: true }
+      }
+    }
+  });
+}
+
+// 3. Weekly Volume Chart (Total kg per session/week)
+function renderWeeklyVolumeChart() {
+  const canvas = document.getElementById('weeklyVolumeCanvas');
+  if (!canvas || typeof Chart === 'undefined') return;
+
+  const labels = [];
+  const volumes = [];
+
+  if (appState.workoutHistory && appState.workoutHistory.length > 0) {
+    [...appState.workoutHistory].slice(0, 7).reverse().forEach(record => {
+      labels.push(record.dateFormatted);
+      volumes.push(record.totalVolumeKg || 0);
+    });
+  }
+
+  if (weeklyVolumeChart) weeklyVolumeChart.destroy();
+
+  const ctx = canvas.getContext('2d');
+  weeklyVolumeChart = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: labels.length > 0 ? labels : ['Sesión 1', 'Sesión 2', 'Sesión 3'],
+      datasets: [{
+        label: 'Volumen Total (kg)',
+        data: volumes.length > 0 ? volumes : [0, 0, 0],
+        backgroundColor: 'rgba(79, 172, 254, 0.6)',
+        borderColor: '#4facfe',
+        borderWidth: 1,
+        borderRadius: 6
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { labels: { color: '#f0f4f8', font: { family: 'Plus Jakarta Sans', size: 11 } } }
+      },
+      scales: {
+        x: { ticks: { color: '#8e9bb0' }, grid: { display: false } },
+        y: { ticks: { color: '#8e9bb0' }, grid: { color: 'rgba(255, 255, 255, 0.05)' }, beginAtZero: true }
+      }
+    }
+  });
+}
+
+// 4. Muscle Distribution Pie Chart
+function renderMuscleDistributionChart() {
+  const canvas = document.getElementById('muscleDistributionCanvas');
+  if (!canvas || typeof Chart === 'undefined') return;
+
+  const muscleCounts = {
+    'Pierna': 0, 'Pectoral': 0, 'Espalda': 0, 'Hombro': 0, 'Bíceps': 0, 'Tríceps': 0, 'Abdomen': 0
+  };
+
+  if (appState.workoutHistory && appState.workoutHistory.length > 0) {
+    appState.workoutHistory.forEach(record => {
+      if (record.detailedExercises) {
+        record.detailedExercises.forEach(ex => {
+          if (muscleCounts[ex.category] !== undefined) {
+            muscleCounts[ex.category] += ex.sets.length;
+          }
+        });
+      }
+    });
+  }
+
+  if (muscleDistributionChart) muscleDistributionChart.destroy();
+
+  const ctx = canvas.getContext('2d');
+  muscleDistributionChart = new Chart(ctx, {
+    type: 'doughnut',
+    data: {
+      labels: Object.keys(muscleCounts),
+      datasets: [{
+        data: Object.values(muscleCounts),
+        backgroundColor: [
+          '#ff5252', '#4facfe', '#00e676', '#ff9100', '#e040fb', '#00e5ff', '#ffeb3b'
+        ],
+        borderWidth: 2,
+        borderColor: '#131b2e'
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { position: 'bottom', labels: { color: '#f0f4f8', font: { family: 'Plus Jakarta Sans', size: 10 } } }
+      }
+    }
+  });
+}
 
 </script>
 </body>
