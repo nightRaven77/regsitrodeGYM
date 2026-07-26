@@ -19,6 +19,25 @@ let appState = {
   sessionTimerInterval: null
 };
 
+// Central App Configuration Constants
+const CONFIG = {
+  DEFAULT_REST_SECONDS: 60,
+  CHART_REFLOW_DELAY_MS: 60,
+  MAX_PR_CARDS: 4
+};
+
+const STORAGE_KEYS = {
+  PROFILES: 'gym_profiles',
+  ACTIVE_PROFILE_ID: 'gym_active_profile_id',
+  JWT_TOKEN: 'gym_jwt_token',
+  USER_ACCOUNT: 'gym_user_account',
+  routines: pId => `gym_routines_${pId}`,
+  activeRoutineId: pId => `gym_active_routine_id_${pId}`,
+  weightsHistory: pId => `gym_weights_history_${pId}`,
+  workoutHistory: pId => `gym_workout_history_${pId}`,
+  activeSession: pId => `gym_active_session_${pId}`
+};
+
 const DEFAULT_PROFILES = [
   { id: 'prof_guest', name: 'Invitado / Anónimo', avatar: '👤', isGuest: true }
 ];
@@ -49,20 +68,20 @@ function playTimerBeep() {
 // --- LocalStorage Helpers ---
 function loadStorageData() {
   // 1. Profiles
-  const savedProfiles = localStorage.getItem('gym_profiles');
+  const savedProfiles = localStorage.getItem(STORAGE_KEYS.PROFILES);
   if (savedProfiles) {
     appState.profiles = JSON.parse(savedProfiles);
   } else {
     appState.profiles = DEFAULT_PROFILES;
-    localStorage.setItem('gym_profiles', JSON.stringify(appState.profiles));
+    localStorage.setItem(STORAGE_KEYS.PROFILES, JSON.stringify(appState.profiles));
   }
 
-  const savedActiveProfileId = localStorage.getItem('gym_active_profile_id');
+  const savedActiveProfileId = localStorage.getItem(STORAGE_KEYS.ACTIVE_PROFILE_ID);
   if (savedActiveProfileId && appState.profiles.some(p => p.id === savedActiveProfileId)) {
     appState.activeProfileId = savedActiveProfileId;
   } else {
     appState.activeProfileId = appState.profiles[0].id;
-    localStorage.setItem('gym_active_profile_id', appState.activeProfileId);
+    localStorage.setItem(STORAGE_KEYS.ACTIVE_PROFILE_ID, appState.activeProfileId);
   }
 
   loadActiveProfileData();
@@ -72,24 +91,24 @@ function loadActiveProfileData() {
   const pId = appState.activeProfileId;
 
   // 1. Fast load from LocalStorage for instant UI response (Start from 0 default routines)
-  const savedRoutines = localStorage.getItem(`gym_routines_${pId}`);
+  const savedRoutines = localStorage.getItem(STORAGE_KEYS.routines(pId));
   if (savedRoutines) {
     appState.routines = JSON.parse(savedRoutines);
   } else {
     appState.routines = [];
-    localStorage.setItem(`gym_routines_${pId}`, JSON.stringify(appState.routines));
+    localStorage.setItem(STORAGE_KEYS.routines(pId), JSON.stringify(appState.routines));
   }
 
-  const savedActiveRoutineId = localStorage.getItem(`gym_active_routine_id_${pId}`);
+  const savedActiveRoutineId = localStorage.getItem(STORAGE_KEYS.activeRoutineId(pId));
   appState.activeRoutineId = savedActiveRoutineId || (appState.routines.length > 0 ? appState.routines[0].id : null);
 
-  const savedWeights = localStorage.getItem(`gym_weights_history_${pId}`);
+  const savedWeights = localStorage.getItem(STORAGE_KEYS.weightsHistory(pId));
   appState.weightsHistory = savedWeights ? JSON.parse(savedWeights) : {};
 
-  const savedHistory = localStorage.getItem(`gym_workout_history_${pId}`);
+  const savedHistory = localStorage.getItem(STORAGE_KEYS.workoutHistory(pId));
   appState.workoutHistory = savedHistory ? JSON.parse(savedHistory) : [];
 
-  const savedSession = localStorage.getItem(`gym_active_session_${pId}`);
+  const savedSession = localStorage.getItem(STORAGE_KEYS.activeSession(pId));
   appState.activeSession = savedSession ? JSON.parse(savedSession) : null;
 
   // 2. Fetch latest data from Cloud API if registered account (Guest profiles bypass cloud sync)
@@ -109,17 +128,17 @@ async function fetchCloudState(pId) {
 
       if (data.routines && data.routines.length > 0) {
         appState.routines = data.routines;
-        localStorage.setItem(`gym_routines_${pId}`, JSON.stringify(appState.routines));
+        localStorage.setItem(STORAGE_KEYS.routines(pId), JSON.stringify(appState.routines));
         updated = true;
       }
       if (data.weightsHistory) {
         appState.weightsHistory = data.weightsHistory;
-        localStorage.setItem(`gym_weights_history_${pId}`, JSON.stringify(appState.weightsHistory));
+        localStorage.setItem(STORAGE_KEYS.weightsHistory(pId), JSON.stringify(appState.weightsHistory));
         updated = true;
       }
       if (data.workoutHistory) {
         appState.workoutHistory = data.workoutHistory;
-        localStorage.setItem(`gym_workout_history_${pId}`, JSON.stringify(appState.workoutHistory));
+        localStorage.setItem(STORAGE_KEYS.workoutHistory(pId), JSON.stringify(appState.workoutHistory));
         updated = true;
       }
 
@@ -141,8 +160,6 @@ async function syncToCloudDatabase() {
 
   try {
     const payload = {
-      profiles: appState.profiles,
-      activeProfileId: appState.activeProfileId,
       routines: appState.routines,
       weightsHistory: appState.weightsHistory,
       workoutHistory: appState.workoutHistory,
@@ -160,35 +177,35 @@ async function syncToCloudDatabase() {
 }
 
 function saveProfiles() {
-  localStorage.setItem('gym_profiles', JSON.stringify(appState.profiles));
+  localStorage.setItem(STORAGE_KEYS.PROFILES, JSON.stringify(appState.profiles));
   syncToCloudDatabase();
 }
 
 function saveRoutines() {
   const pId = appState.activeProfileId;
-  localStorage.setItem(`gym_routines_${pId}`, JSON.stringify(appState.routines));
+  localStorage.setItem(STORAGE_KEYS.routines(pId), JSON.stringify(appState.routines));
   syncToCloudDatabase();
 }
 
 function saveActiveSession() {
   const pId = appState.activeProfileId;
   if (appState.activeSession) {
-    localStorage.setItem(`gym_active_session_${pId}`, JSON.stringify(appState.activeSession));
+    localStorage.setItem(STORAGE_KEYS.activeSession(pId), JSON.stringify(appState.activeSession));
   } else {
-    localStorage.removeItem(`gym_active_session_${pId}`);
+    localStorage.removeItem(STORAGE_KEYS.activeSession(pId));
   }
   syncToCloudDatabase();
 }
 
 function saveWeightsHistory() {
   const pId = appState.activeProfileId;
-  localStorage.setItem(`gym_weights_history_${pId}`, JSON.stringify(appState.weightsHistory));
+  localStorage.setItem(STORAGE_KEYS.weightsHistory(pId), JSON.stringify(appState.weightsHistory));
   syncToCloudDatabase();
 }
 
 function saveWorkoutHistory() {
   const pId = appState.activeProfileId;
-  localStorage.setItem(`gym_workout_history_${pId}`, JSON.stringify(appState.workoutHistory));
+  localStorage.setItem(STORAGE_KEYS.workoutHistory(pId), JSON.stringify(appState.workoutHistory));
   syncToCloudDatabase();
 }
 
@@ -268,7 +285,16 @@ function refreshCurrentProfileUI() {
 }
 
 // --- Multi-Profile UI Setup & Handlers ---
+// --- Multi-Profile UI Setup & Handlers ---
 function setupProfileUI() {
+  setupProfileModalEvents();
+  setupBackupExportImportHandlers();
+  setupProfileHeroEditing();
+  setupLogoutHandler();
+  setupAuthHandlers();
+}
+
+function setupProfileModalEvents() {
   if (btnProfileSelect) {
     btnProfileSelect.addEventListener('click', () => {
       renderProfilesModal();
@@ -281,84 +307,90 @@ function setupProfileUI() {
       profileModal.classList.add('hidden');
     });
   }
+}
 
-  // Backup Export JSON handler
+function setupBackupExportImportHandlers() {
   const btnExportBackup = document.getElementById('btnExportBackup');
   const btnImportBackup = document.getElementById('btnImportBackup');
   const importFileInput = document.getElementById('importFileInput');
 
-  btnExportBackup.onclick = () => {
-    const backupData = {
-      appName: "GymTracker",
-      version: "2.0",
-      exportDate: new Date().toISOString(),
-      profiles: appState.profiles,
-      activeProfileId: appState.activeProfileId,
-      profileDataMap: {}
-    };
-
-    appState.profiles.forEach(p => {
-      const pId = p.id;
-      backupData.profileDataMap[pId] = {
-        routines: JSON.parse(localStorage.getItem(`gym_routines_${pId}`) || '[]'),
-        weightsHistory: JSON.parse(localStorage.getItem(`gym_weights_history_${pId}`) || '{}'),
-        workoutHistory: JSON.parse(localStorage.getItem(`gym_workout_history_${pId}`) || '[]'),
-        activeSession: JSON.parse(localStorage.getItem(`gym_active_session_${pId}`) || 'null')
+  if (btnExportBackup) {
+    btnExportBackup.onclick = () => {
+      const backupData = {
+        appName: "GymTracker",
+        version: "2.0",
+        exportDate: new Date().toISOString(),
+        profiles: appState.profiles,
+        activeProfileId: appState.activeProfileId,
+        profileDataMap: {}
       };
-    });
 
-    const blob = new Blob([JSON.stringify(backupData, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `gymtracker_backup_${new Date().toISOString().slice(0, 10)}.json`;
-    a.click();
-    URL.revokeObjectURL(url);
-  };
+      appState.profiles.forEach(p => {
+        const pId = p.id;
+        backupData.profileDataMap[pId] = {
+          routines: JSON.parse(localStorage.getItem(STORAGE_KEYS.routines(pId)) || '[]'),
+          weightsHistory: JSON.parse(localStorage.getItem(STORAGE_KEYS.weightsHistory(pId)) || '{}'),
+          workoutHistory: JSON.parse(localStorage.getItem(STORAGE_KEYS.workoutHistory(pId)) || '[]'),
+          activeSession: JSON.parse(localStorage.getItem(STORAGE_KEYS.activeSession(pId)) || 'null')
+        };
+      });
 
-  btnImportBackup.onclick = () => importFileInput.click();
-
-  importFileInput.onchange = (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      try {
-        const data = JSON.parse(event.target.result);
-        if (!data.profiles || !data.profileDataMap) {
-          alert('Archivo de respaldo no válido.');
-          return;
-        }
-
-        appState.profiles = data.profiles;
-        saveProfiles();
-
-        Object.keys(data.profileDataMap).forEach(pId => {
-          const pData = data.profileDataMap[pId];
-          if (pData.routines) localStorage.setItem(`gym_routines_${pId}`, JSON.stringify(pData.routines));
-          if (pData.weightsHistory) localStorage.setItem(`gym_weights_history_${pId}`, JSON.stringify(pData.weightsHistory));
-          if (pData.workoutHistory) localStorage.setItem(`gym_workout_history_${pId}`, JSON.stringify(pData.workoutHistory));
-          if (pData.activeSession) localStorage.setItem(`gym_active_session_${pId}`, JSON.stringify(pData.activeSession));
-        });
-
-        if (data.activeProfileId) {
-          appState.activeProfileId = data.activeProfileId;
-          localStorage.setItem('gym_active_profile_id', data.activeProfileId);
-        }
-
-        loadActiveProfileData();
-        refreshCurrentProfileUI();
-        profileModal.classList.add('hidden');
-        alert('¡Copia de seguridad restaurada con éxito!');
-      } catch (err) {
-        alert('Error al leer el archivo JSON de respaldo.');
-      }
+      const blob = new Blob([JSON.stringify(backupData, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `gymtracker_backup_${new Date().toISOString().slice(0, 10)}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
     };
-    reader.readAsText(file);
-  };
+  }
 
-  // Profile Hero Name Save & Avatar Emoji Picker
+  if (btnImportBackup && importFileInput) {
+    btnImportBackup.onclick = () => importFileInput.click();
+
+    importFileInput.onchange = (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        try {
+          const data = JSON.parse(event.target.result);
+          if (!data.profiles || !data.profileDataMap) {
+            alert('Archivo de respaldo no válido.');
+            return;
+          }
+
+          appState.profiles = data.profiles;
+          saveProfiles();
+
+          Object.keys(data.profileDataMap).forEach(pId => {
+            const pData = data.profileDataMap[pId];
+            if (pData.routines) localStorage.setItem(STORAGE_KEYS.routines(pId), JSON.stringify(pData.routines));
+            if (pData.weightsHistory) localStorage.setItem(STORAGE_KEYS.weightsHistory(pId), JSON.stringify(pData.weightsHistory));
+            if (pData.workoutHistory) localStorage.setItem(STORAGE_KEYS.workoutHistory(pId), JSON.stringify(pData.workoutHistory));
+            if (pData.activeSession) localStorage.setItem(STORAGE_KEYS.activeSession(pId), JSON.stringify(pData.activeSession));
+          });
+
+          if (data.activeProfileId) {
+            appState.activeProfileId = data.activeProfileId;
+            localStorage.setItem(STORAGE_KEYS.ACTIVE_PROFILE_ID, data.activeProfileId);
+          }
+
+          loadActiveProfileData();
+          refreshCurrentProfileUI();
+          profileModal.classList.add('hidden');
+          alert('¡Copia de seguridad restaurada con éxito!');
+        } catch (err) {
+          alert('Error al leer el archivo JSON de respaldo.');
+        }
+      };
+      reader.readAsText(file);
+    };
+  }
+}
+
+function setupProfileHeroEditing() {
   const profileHeroAvatar = document.getElementById('profileHeroAvatar');
   const avatarPickerGrid = document.getElementById('avatarPickerGrid');
   const editProfileNameInput = document.getElementById('editProfileNameInput');
@@ -397,16 +429,17 @@ function setupProfileUI() {
       }
     };
   }
+}
 
-  // Logout handler
+function setupLogoutHandler() {
   const btnLogout = document.getElementById('btnLogout');
   if (btnLogout) {
     btnLogout.onclick = () => {
       if (confirm('¿Cerrar sesión en esta cuenta?')) {
-        localStorage.removeItem('gym_jwt_token');
-        localStorage.removeItem('gym_user_account');
+        localStorage.removeItem(STORAGE_KEYS.JWT_TOKEN);
+        localStorage.removeItem(STORAGE_KEYS.USER_ACCOUNT);
         appState.activeProfileId = 'prof_guest';
-        localStorage.setItem('gym_active_profile_id', 'prof_guest');
+        localStorage.setItem(STORAGE_KEYS.ACTIVE_PROFILE_ID, 'prof_guest');
         loadActiveProfileData();
         refreshCurrentProfileUI();
         renderProfilesModal();
@@ -414,8 +447,9 @@ function setupProfileUI() {
       }
     };
   }
+}
 
-  // Segmented Auth Tabs (Login vs Register vs Guest)
+function setupAuthHandlers() {
   const tabAuthLogin = document.getElementById('tabAuthLogin');
   const tabAuthRegister = document.getElementById('tabAuthRegister');
   const tabAuthGuest = document.getElementById('tabAuthGuest');
@@ -431,7 +465,7 @@ function setupProfileUI() {
   const btnContinueAsGuest = document.getElementById('btnContinueAsGuest');
   const authStatusMessage = document.getElementById('authStatusMessage');
 
-  let currentAuthMode = 'login'; // 'login' | 'register' | 'guest'
+  let currentAuthMode = 'login';
   let selectedRegisterEmoji = '👤';
 
   if (tabAuthLogin && tabAuthRegister && tabAuthGuest) {
@@ -477,7 +511,6 @@ function setupProfileUI() {
     };
   }
 
-  // Registration Emoji Picker Handler
   const authRegisterEmojiPicker = document.getElementById('authRegisterEmojiPicker');
   if (authRegisterEmojiPicker) {
     authRegisterEmojiPicker.querySelectorAll('.emoji-picker-item').forEach(item => {
@@ -492,7 +525,7 @@ function setupProfileUI() {
   if (btnContinueAsGuest) {
     btnContinueAsGuest.onclick = () => {
       appState.activeProfileId = 'prof_guest';
-      localStorage.setItem('gym_active_profile_id', 'prof_guest');
+      localStorage.setItem(STORAGE_KEYS.ACTIVE_PROFILE_ID, 'prof_guest');
       loadActiveProfileData();
       refreshCurrentProfileUI();
       profileModal.classList.add('hidden');
@@ -541,9 +574,9 @@ function setupProfileUI() {
         }
 
         if (data.token) {
-          localStorage.setItem('gym_jwt_token', data.token);
+          localStorage.setItem(STORAGE_KEYS.JWT_TOKEN, data.token);
           if (data.user) {
-            localStorage.setItem('gym_user_account', JSON.stringify(data.user));
+            localStorage.setItem(STORAGE_KEYS.USER_ACCOUNT, JSON.stringify(data.user));
             const userProfile = {
               id: data.user.id,
               name: data.user.name,
@@ -855,24 +888,7 @@ function renderLiveExercisesCards() {
 
     const card = document.createElement('div');
     card.className = `exercise-live-card ${allDone ? 'completed' : ''}`;
-    card.innerHTML = `
-      <div class="exercise-live-title">
-        <div>
-          <span>${ex.name}</span>
-          <span class="badge badge-${ex.category.toLowerCase()}" style="margin-left: 6px;">${ex.category}</span>
-        </div>
-        <div style="display: flex; align-items: center; gap: 8px;">
-          <div style="font-size: 11px; color: var(--accent-cyan); font-weight: 500;">
-            ${lastWeightStr}
-          </div>
-          <div class="unit-toggle-group">
-            <button class="btn-unit-toggle ${unit === 'kg' ? 'active' : ''}" data-unit="kg">kg</button>
-            <button class="btn-unit-toggle ${unit === 'lb' ? 'active' : ''}" data-unit="lb">lb</button>
-          </div>
-        </div>
-      </div>
-      <div id="setsContainer_${ex.id}"></div>
-    `;
+    card.innerHTML = createLiveExerciseHeaderHTML(ex, lastWeightStr, unit);
 
     // Unit toggle buttons (kg vs lb) handler
     card.querySelectorAll('.btn-unit-toggle').forEach(btn => {
@@ -1226,6 +1242,7 @@ function renderCatalog(category = 'ALL', searchQuery = '') {
 // --- History View ---
 function renderHistory() {
   const historyLogsContainer = document.getElementById('historyLogsContainer');
+  if (!historyLogsContainer) return;
   historyLogsContainer.innerHTML = '';
 
   if (!appState.workoutHistory || appState.workoutHistory.length === 0) {
@@ -1241,35 +1258,7 @@ function renderHistory() {
 
     const hasDetails = record.detailedExercises && record.detailedExercises.length > 0;
 
-    item.innerHTML = `
-      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
-        <strong style="font-size: 16px; color: #fff;">${record.dayName}</strong>
-        <div style="display: flex; align-items: center; gap: 8px;">
-          <span style="font-size: 11px; color: var(--accent-cyan);">${record.dateFormatted} • ${record.timeFormatted}</span>
-          <button class="btn btn-danger btn-sm del-log-btn" style="padding: 2px 6px; font-size: 11px;">🗑️</button>
-        </div>
-      </div>
-
-      <div style="font-size: 12px; color: var(--text-muted); margin-bottom: 8px;">
-        ⏱️ Duración: <strong>${mins} min</strong> • 🏋️ Series: <strong>${record.totalSets}</strong> • 📊 Vol: <strong>${record.totalVolumeKg} kg</strong>
-      </div>
-
-      <div style="display: flex; justify-content: space-between; align-items: center;">
-        <div style="font-size: 11px; color: var(--text-muted); text-overflow: ellipsis; overflow: hidden; white-space: nowrap;">
-          ${record.exercisesSummary ? record.exercisesSummary.map(e => `${e.name}`).join(', ') : ''}
-        </div>
-        <span class="toggle-detail-label" style="font-size: 11px; color: var(--accent-cyan); font-weight: 700; white-space: nowrap; margin-left: 10px;">
-          Ver Detalle ▼
-        </span>
-      </div>
-
-      <div class="history-detail-drawer hidden">
-        <div style="font-size: 12px; font-weight: 700; color: #fff; margin-bottom: 8px;">
-          📋 Desglose de Ejercicios y Series:
-        </div>
-        <div class="detail-exercises-list"></div>
-      </div>
-    `;
+    item.innerHTML = createHistoryCardHTML(record, mins);
 
     // Delete Log Button Handler
     const delLogBtn = item.querySelector('.del-log-btn');
@@ -1354,6 +1343,8 @@ const btnSaveRoutine = document.getElementById('btnSaveRoutine');
 let editingRoutine = null;
 
 function renderRoutinesList() {
+  const routinesListContainer = document.getElementById('routinesListContainer');
+  if (!routinesListContainer) return;
   routinesListContainer.innerHTML = '';
   if (!appState.routines || appState.routines.length === 0) {
     routinesListContainer.innerHTML = `
@@ -1384,18 +1375,7 @@ function renderRoutinesList() {
     item.className = 'card';
     item.style.marginBottom = '10px';
 
-    item.innerHTML = `
-      <div style="display: flex; justify-content: space-between; align-items: center;">
-        <div>
-          <strong style="font-size: 16px; color: #fff;">${r.name}</strong>
-          <div style="font-size: 12px; color: var(--text-muted);">${r.days ? r.days.length : 0} Días de entrenamiento</div>
-        </div>
-        <div style="display: flex; gap: 6px;">
-          <button class="btn btn-secondary btn-sm edit-r-btn">Editar</button>
-          <button class="btn btn-danger btn-sm del-r-btn">🗑️</button>
-        </div>
-      </div>
-    `;
+    item.innerHTML = createRoutineItemHTML(r);
 
     item.querySelector('.edit-r-btn').onclick = () => openRoutineEditor(r);
     item.querySelector('.del-r-btn').onclick = () => {
@@ -1625,3 +1605,74 @@ btnSaveRoutine.onclick = () => {
   routineEditorCard.classList.add('hidden');
   alert('¡Rutina guardada con éxito!');
 };
+
+// --- UI Component Template Generators (Clean Code / Pure Functions) ---
+function createLiveExerciseHeaderHTML(ex, lastWeightStr, unit) {
+  return `
+    <div class="exercise-live-title">
+      <div>
+        <span>${ex.name}</span>
+        <span class="badge badge-${ex.category.toLowerCase()}" style="margin-left: 6px;">${ex.category}</span>
+      </div>
+      <div style="display: flex; align-items: center; gap: 8px;">
+        <div style="font-size: 11px; color: var(--accent-cyan); font-weight: 500;">
+          ${lastWeightStr}
+        </div>
+        <div class="unit-toggle-group">
+          <button class="btn-unit-toggle ${unit === 'kg' ? 'active' : ''}" data-unit="kg">kg</button>
+          <button class="btn-unit-toggle ${unit === 'lb' ? 'active' : ''}" data-unit="lb">lb</button>
+        </div>
+      </div>
+    </div>
+    <div id="setsContainer_${ex.id}"></div>
+  `;
+}
+
+function createHistoryCardHTML(record, mins) {
+  const summaryStr = record.exercisesSummary ? record.exercisesSummary.map(e => e.name).join(', ') : '';
+  return `
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+      <strong style="font-size: 16px; color: #fff;">${record.dayName}</strong>
+      <div style="display: flex; align-items: center; gap: 8px;">
+        <span style="font-size: 11px; color: var(--accent-cyan);">${record.dateFormatted} • ${record.timeFormatted}</span>
+        <button class="btn btn-danger btn-sm del-log-btn" style="padding: 2px 6px; font-size: 11px;">🗑️</button>
+      </div>
+    </div>
+
+    <div style="font-size: 12px; color: var(--text-muted); margin-bottom: 8px;">
+      ⏱️ Duración: <strong>${mins} min</strong> • 🏋️ Series: <strong>${record.totalSets}</strong> • 📊 Vol: <strong>${record.totalVolumeKg} kg</strong>
+    </div>
+
+    <div style="display: flex; justify-content: space-between; align-items: center;">
+      <div style="font-size: 11px; color: var(--text-muted); text-overflow: ellipsis; overflow: hidden; white-space: nowrap;">
+        ${summaryStr}
+      </div>
+      <span class="toggle-detail-label" style="font-size: 11px; color: var(--accent-cyan); font-weight: 700; white-space: nowrap; margin-left: 10px;">
+        Ver Detalle ▼
+      </span>
+    </div>
+
+    <div class="history-detail-drawer hidden">
+      <div style="font-size: 12px; font-weight: 700; color: #fff; margin-bottom: 8px;">
+        📋 Desglose de Ejercicios y Series:
+      </div>
+      <div class="detail-exercises-list"></div>
+    </div>
+  `;
+}
+
+function createRoutineItemHTML(routine) {
+  const daysCount = routine.days ? routine.days.length : 0;
+  return `
+    <div style="display: flex; justify-content: space-between; align-items: center;">
+      <div>
+        <strong style="font-size: 16px; color: #fff;">${routine.name}</strong>
+        <div style="font-size: 12px; color: var(--text-muted);">${daysCount} Días de entrenamiento</div>
+      </div>
+      <div style="display: flex; gap: 6px;">
+        <button class="btn btn-secondary btn-sm edit-r-btn">Editar</button>
+        <button class="btn btn-danger btn-sm del-r-btn">🗑️</button>
+      </div>
+    </div>
+  `;
+}

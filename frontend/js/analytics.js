@@ -122,7 +122,7 @@ function renderPRsSummary() {
     .map(name => ({ name, ...prsMap[name] }))
     .filter(pr => pr.maxWeight > 0)
     .sort((a, b) => b.maxWeight - a.maxWeight)
-    .slice(0, 4);
+    .slice(0, typeof CONFIG !== 'undefined' ? CONFIG.MAX_PR_CARDS : 4);
 
   if (topPRs.length === 0) {
     prsContainer.innerHTML = '<div style="color: var(--text-muted); font-size: 12px; text-align: center; width: 100%;">Registra tus entrenamientos en vivo para desbloquear tus Récords Personales (PRs).</div>';
