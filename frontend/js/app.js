@@ -659,9 +659,9 @@ function setupNavigation() {
       const targetEl = document.getElementById(targetTab);
       if (targetEl) targetEl.classList.add('active');
 
-      if (targetTab === 'tab-analytics' && typeof renderAnalyticsDashboard === 'function') {
+      if (targetTab === 'tab-analytics' && typeof initAnalytics === 'function') {
         setTimeout(() => {
-          renderAnalyticsDashboard();
+          initAnalytics();
         }, 60);
       }
     });

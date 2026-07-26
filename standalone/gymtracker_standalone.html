@@ -1184,67 +1184,58 @@ body {
     <!-- =================================================================== -->
     <!-- TAB 4: HISTORIAL Y REGISTROS -->
     <!-- =================================================================== -->
-    <section id="tab-history" class="tab-content">
+    </section>
+
+    <!-- =================================================================== -->
+    <!-- TAB 5: ANALÍTICA Y PROGRESO (Chart.js Dashboard) -->
+    <!-- =================================================================== -->
+    <section id="tab-analytics" class="tab-content">
+      <!-- PRs Summary Card -->
       <div class="card">
         <div class="card-title">
-          <span>Historial de Entrenamientos</span>
+          <span>🏆 Récords Personales (PRs)</span>
         </div>
-        <div id="historyLogsContainer">
+        <div id="prsContainer" style="display: flex; gap: 8px; overflow-x: auto; padding-bottom: 4px;">
           <!-- Populated via JS -->
         </div>
       </div>
-      <!-- =================================================================== -->
-      <!-- TAB 5: ANALÍTICA Y PROGRESO (Chart.js Dashboard) -->
-      <!-- =================================================================== -->
-      <section id="tab-analytics" class="tab-content">
-        <!-- PRs Summary Card -->
-        <div class="card">
-          <div class="card-title">
-            <span>🏆 Récords Personales (PRs)</span>
-          </div>
-          <div id="prsContainer" style="display: flex; gap: 8px; overflow-x: auto; padding-bottom: 4px;">
+
+      <!-- Progressive Overload Chart -->
+      <div class="card">
+        <div class="card-title" style="flex-wrap: wrap; gap: 6px;">
+          <span>📈 Sobrecarga Progresiva</span>
+        </div>
+        <div class="form-group" style="margin-bottom: 10px;">
+          <label class="form-label">Seleccionar Ejercicio:</label>
+          <select id="analyticsExSelect" class="form-control">
             <!-- Populated via JS -->
-          </div>
+          </select>
         </div>
-
-        <!-- Progressive Overload Chart -->
-        <div class="card">
-          <div class="card-title" style="flex-wrap: wrap; gap: 6px;">
-            <span>📈 Sobrecarga Progresiva</span>
-          </div>
-          <div class="form-group" style="margin-bottom: 10px;">
-            <label class="form-label">Seleccionar Ejercicio:</label>
-            <select id="analyticsExSelect" class="form-control">
-              <!-- Populated via JS -->
-            </select>
-          </div>
-          <div style="position: relative; height: 220px; width: 100%;">
-            <canvas id="overloadChartCanvas"></canvas>
-          </div>
+        <div style="position: relative; height: 220px; width: 100%;">
+          <canvas id="overloadChartCanvas"></canvas>
         </div>
+      </div>
 
-        <!-- Weekly Volume Chart -->
-        <div class="card">
-          <div class="card-title">
-            <span>📊 Volumen Semanal (kg)</span>
-          </div>
-          <div style="position: relative; height: 200px; width: 100%;">
-            <canvas id="weeklyVolumeCanvas"></canvas>
-          </div>
+      <!-- Weekly Volume Chart -->
+      <div class="card">
+        <div class="card-title">
+          <span>📊 Volumen Semanal (kg)</span>
         </div>
-
-        <!-- Muscle Group Distribution -->
-        <div class="card">
-          <div class="card-title">
-            <span>🎯 Enfoque por Grupo Muscular</span>
-          </div>
-          <div style="position: relative; height: 210px; width: 100%;">
-            <canvas id="muscleDistributionCanvas"></canvas>
-          </div>
+        <div style="position: relative; height: 200px; width: 100%;">
+          <canvas id="weeklyVolumeCanvas"></canvas>
         </div>
-      </section>
+      </div>
 
-  </main>
+      <!-- Muscle Group Distribution -->
+      <div class="card">
+        <div class="card-title">
+          <span>🎯 Enfoque por Grupo Muscular</span>
+        </div>
+        <div style="position: relative; height: 210px; width: 100%;">
+          <canvas id="muscleDistributionCanvas"></canvas>
+        </div>
+      </div>
+    </section>
 
   <!-- =================================================================== -->
   <!-- FLOATING REST TIMER BANNER -->
