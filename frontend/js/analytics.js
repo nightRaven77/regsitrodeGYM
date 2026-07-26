@@ -19,13 +19,33 @@ function initAnalytics() {
     const analyticsExSelect = document.getElementById('analyticsExSelect');
     if (!analyticsExSelect) return;
 
-    // Populate exercise selector for progressive overload chart
     analyticsExSelect.innerHTML = '';
-    DEFAULT_EXERCISES_CATALOG.forEach(ex => {
+
+    const loggedExNames = new Set();
+    if (appState.workoutHistory && appState.workoutHistory.length > 0) {
+      appState.workoutHistory.forEach(w => {
+        if (w.detailedExercises) {
+          w.detailedExercises.forEach(ex => loggedExNames.add(ex.name));
+        }
+      });
+    }
+
+    // Add exercises with history first
+    loggedExNames.forEach(name => {
       const option = document.createElement('option');
-      option.value = ex.id;
-      option.textContent = `${ex.name} (${ex.category})`;
+      option.value = name;
+      option.textContent = `★ ${name} (Con Historial)`;
       analyticsExSelect.appendChild(option);
+    });
+
+    // Add catalog exercises
+    DEFAULT_EXERCISES_CATALOG.forEach(ex => {
+      if (!loggedExNames.has(ex.name)) {
+        const option = document.createElement('option');
+        option.value = ex.name;
+        option.textContent = `${ex.name} (${ex.category})`;
+        analyticsExSelect.appendChild(option);
+      }
     });
 
     analyticsExSelect.onchange = (e) => {
@@ -47,9 +67,20 @@ function renderAnalyticsDashboard() {
     renderPRsSummary();
     
     const analyticsExSelect = document.getElementById('analyticsExSelect');
-    const selectedExId = (analyticsExSelect && analyticsExSelect.value) ? analyticsExSelect.value : DEFAULT_EXERCISES_CATALOG[0].id;
-    renderOverloadChart(selectedExId);
-    
+    let selectedExName = (analyticsExSelect && analyticsExSelect.value) ? analyticsExSelect.value : null;
+
+    if (!selectedExName && appState.workoutHistory && appState.workoutHistory.length > 0) {
+      const firstRecord = appState.workoutHistory[0];
+      if (firstRecord.detailedExercises && firstRecord.detailedExercises.length > 0) {
+        selectedExName = firstRecord.detailedExercises[0].name;
+      }
+    }
+
+    if (!selectedExName && DEFAULT_EXERCISES_CATALOG.length > 0) {
+      selectedExName = DEFAULT_EXERCISES_CATALOG[0].name;
+    }
+
+    renderOverloadChart(selectedExName);
     renderWeeklyVolumeChart();
     renderMuscleDistributionChart();
   } catch (err) {
@@ -113,12 +144,12 @@ function renderPRsSummary() {
 }
 
 // 2. Progressive Overload Chart (1RM & Max Weight vs Date)
-function renderOverloadChart(exerciseId) {
+function renderOverloadChart(exerciseName) {
   const canvas = document.getElementById('overloadChartCanvas');
   if (!canvas) return;
 
-  const targetEx = DEFAULT_EXERCISES_CATALOG.find(ex => ex.id === exerciseId);
-  const exName = targetEx ? targetEx.name : '';
+  const targetEx = DEFAULT_EXERCISES_CATALOG.find(ex => ex.id === exerciseName || ex.name.toLowerCase() === (exerciseName || '').toLowerCase());
+  const exName = exerciseName || (targetEx ? targetEx.name : (DEFAULT_EXERCISES_CATALOG[0] ? DEFAULT_EXERCISES_CATALOG[0].name : ''));
 
   const labels = [];
   const maxWeights = [];

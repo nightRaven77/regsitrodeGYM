@@ -404,7 +404,7 @@ function setupProfileUI() {
           activeProfile.avatar = emoji;
           saveProfiles();
           updateHeaderProfilePill();
-          profileHeroAvatar.textContent = emoji;
+          if (profileHeroAvatar) profileHeroAvatar.textContent = emoji;
         }
         avatarPickerGrid.classList.add('hidden');
       };
@@ -425,34 +425,104 @@ function setupProfileUI() {
     };
   }
 
-  // Segmented Auth Tabs (Login vs Register)
+  // Logout handler
+  const btnLogout = document.getElementById('btnLogout');
+  if (btnLogout) {
+    btnLogout.onclick = () => {
+      if (confirm('¿Cerrar sesión en esta cuenta?')) {
+        localStorage.removeItem('gym_jwt_token');
+        localStorage.removeItem('gym_user_account');
+        appState.activeProfileId = 'prof_guest';
+        localStorage.setItem('gym_active_profile_id', 'prof_guest');
+        loadActiveProfileData();
+        refreshCurrentProfileUI();
+        renderProfilesModal();
+        alert('Sesión cerrada. Ahora estás en Modo Invitado.');
+      }
+    };
+  }
+
+  // Segmented Auth Tabs (Login vs Register vs Guest)
   const tabAuthLogin = document.getElementById('tabAuthLogin');
   const tabAuthRegister = document.getElementById('tabAuthRegister');
+  const tabAuthGuest = document.getElementById('tabAuthGuest');
+
+  const authFormSection = document.getElementById('authFormSection');
+  const guestModeSection = document.getElementById('guestModeSection');
+  const authRegisterAvatarGroup = document.getElementById('authRegisterAvatarGroup');
+
+  const authName = document.getElementById('authName');
   const authEmail = document.getElementById('authEmail');
   const authPassword = document.getElementById('authPassword');
-  const authName = document.getElementById('authName');
   const btnSubmitAuth = document.getElementById('btnSubmitAuth');
+  const btnContinueAsGuest = document.getElementById('btnContinueAsGuest');
   const authStatusMessage = document.getElementById('authStatusMessage');
 
-  let isRegisterMode = false;
+  let currentAuthMode = 'login'; // 'login' | 'register' | 'guest'
+  let selectedRegisterEmoji = '👨‍🏽‍🦱';
 
-  if (tabAuthLogin && tabAuthRegister) {
+  if (tabAuthLogin && tabAuthRegister && tabAuthGuest) {
     tabAuthLogin.onclick = () => {
-      isRegisterMode = false;
+      currentAuthMode = 'login';
       tabAuthLogin.classList.add('active');
       tabAuthRegister.classList.remove('active');
+      tabAuthGuest.classList.remove('active');
+
+      authFormSection.classList.remove('hidden');
+      guestModeSection.classList.add('hidden');
+
       authName.classList.add('hidden');
-      btnSubmitAuth.textContent = 'Iniciar Sesión con JWT';
+      authRegisterAvatarGroup.classList.add('hidden');
+      btnSubmitAuth.textContent = '🔑 Iniciar Sesión con JWT';
       if (authStatusMessage) authStatusMessage.textContent = '';
     };
 
     tabAuthRegister.onclick = () => {
-      isRegisterMode = true;
+      currentAuthMode = 'register';
       tabAuthRegister.classList.add('active');
       tabAuthLogin.classList.remove('active');
+      tabAuthGuest.classList.remove('active');
+
+      authFormSection.classList.remove('hidden');
+      guestModeSection.classList.add('hidden');
+
       authName.classList.remove('hidden');
-      btnSubmitAuth.textContent = 'Registrar Cuenta en Supabase';
+      authRegisterAvatarGroup.classList.remove('hidden');
+      btnSubmitAuth.textContent = '✨ Registrar Cuenta en Supabase';
       if (authStatusMessage) authStatusMessage.textContent = '';
+    };
+
+    tabAuthGuest.onclick = () => {
+      currentAuthMode = 'guest';
+      tabAuthGuest.classList.add('active');
+      tabAuthLogin.classList.remove('active');
+      tabAuthRegister.classList.remove('active');
+
+      authFormSection.classList.add('hidden');
+      guestModeSection.classList.remove('hidden');
+      if (authStatusMessage) authStatusMessage.textContent = '';
+    };
+  }
+
+  // Registration Emoji Picker Handler
+  const authRegisterEmojiPicker = document.getElementById('authRegisterEmojiPicker');
+  if (authRegisterEmojiPicker) {
+    authRegisterEmojiPicker.querySelectorAll('.emoji-picker-item').forEach(item => {
+      item.onclick = () => {
+        authRegisterEmojiPicker.querySelectorAll('.emoji-picker-item').forEach(i => i.classList.remove('selected'));
+        item.classList.add('selected');
+        selectedRegisterEmoji = item.getAttribute('data-emoji');
+      };
+    });
+  }
+
+  if (btnContinueAsGuest) {
+    btnContinueAsGuest.onclick = () => {
+      appState.activeProfileId = 'prof_guest';
+      localStorage.setItem('gym_active_profile_id', 'prof_guest');
+      loadActiveProfileData();
+      refreshCurrentProfileUI();
+      profileModal.classList.add('hidden');
     };
   }
 
@@ -461,22 +531,21 @@ function setupProfileUI() {
       const email = authEmail.value.trim();
       const password = authPassword.value.trim();
       const name = authName.value.trim();
+      const isRegister = (currentAuthMode === 'register');
 
       if (!email || !password) {
         alert('Por favor ingresa tu correo y contraseña.');
         return;
       }
 
-      if (isRegisterMode && !name) {
+      if (isRegister && !name) {
         alert('Por favor ingresa tu nombre completo.');
         return;
       }
 
-      const activeProfile = appState.profiles.find(p => p.id === appState.activeProfileId);
-      const currentAvatar = activeProfile ? activeProfile.avatar : '👨‍🏽‍🦱';
-      const endpoint = isRegisterMode ? '/api/auth/register' : '/api/auth/login';
-      const bodyPayload = isRegisterMode
-        ? { email, password, name, avatar: currentAvatar }
+      const endpoint = isRegister ? '/api/auth/register' : '/api/auth/login';
+      const bodyPayload = isRegister
+        ? { email, password, name, avatar: selectedRegisterEmoji }
         : { email, password };
 
       try {
@@ -491,7 +560,7 @@ function setupProfileUI() {
 
         const data = await res.json();
         btnSubmitAuth.disabled = false;
-        btnSubmitAuth.textContent = isRegisterMode ? 'Registrar Cuenta en Supabase' : 'Iniciar Sesión con JWT';
+        btnSubmitAuth.textContent = isRegister ? '✨ Registrar Cuenta en Supabase' : '🔑 Iniciar Sesión con JWT';
 
         if (!res.ok) {
           alert(data.detail || 'Error en la autenticación.');
@@ -500,12 +569,12 @@ function setupProfileUI() {
 
         if (data.token) {
           localStorage.setItem('gym_jwt_token', data.token);
-
           if (data.user) {
+            localStorage.setItem('gym_user_account', JSON.stringify(data.user));
             const userProfile = {
               id: data.user.id,
               name: data.user.name,
-              avatar: data.user.avatar || currentAvatar
+              avatar: data.user.avatar || selectedRegisterEmoji
             };
 
             if (!appState.profiles.some(p => p.id === userProfile.id)) {
@@ -515,15 +584,16 @@ function setupProfileUI() {
           }
 
           authStatusMessage.style.color = '#00e676';
-          authStatusMessage.textContent = isRegisterMode ? '¡Cuenta creada en Supabase! Sincronizando...' : '¡Sesión JWT iniciada! Sincronizando...';
+          authStatusMessage.textContent = isRegister ? '¡Cuenta creada en Supabase! Sincronizando...' : '¡Sesión JWT iniciada! Sincronizando...';
           setTimeout(() => {
             profileModal.classList.add('hidden');
             authStatusMessage.textContent = '';
-          }, 1200);
+            renderProfilesModal();
+          }, 1000);
         }
       } catch (err) {
         btnSubmitAuth.disabled = false;
-        btnSubmitAuth.textContent = isRegisterMode ? 'Registrar Cuenta en Supabase' : 'Iniciar Sesión con JWT';
+        btnSubmitAuth.textContent = isRegister ? '✨ Registrar Cuenta en Supabase' : '🔑 Iniciar Sesión con JWT';
         alert('Error conectando con el servidor de autenticación.');
       }
     };
@@ -537,55 +607,34 @@ function updateHeaderProfilePill() {
 }
 
 function renderProfilesModal() {
-  const activeProfile = appState.profiles.find(p => p.id === appState.activeProfileId) || appState.profiles[0];
-  const profileHeroAvatar = document.getElementById('profileHeroAvatar');
-  const editProfileNameInput = document.getElementById('editProfileNameInput');
-  const profileWorkoutCount = document.getElementById('profileWorkoutCount');
+  const loggedInDashboard = document.getElementById('loggedInDashboard');
+  const authGatewayContainer = document.getElementById('authGatewayContainer');
 
-  if (profileHeroAvatar) profileHeroAvatar.textContent = activeProfile.avatar;
-  if (editProfileNameInput) editProfileNameInput.value = activeProfile.name;
-  if (profileWorkoutCount) profileWorkoutCount.textContent = appState.workoutHistory ? appState.workoutHistory.length : 0;
+  const savedUserJson = localStorage.getItem('gym_user_account');
+  const jwtToken = localStorage.getItem('gym_jwt_token');
 
-  profilesList.innerHTML = '';
-  appState.profiles.forEach(p => {
-    const isCurrent = p.id === appState.activeProfileId;
-    const card = document.createElement('div');
-    card.className = `profile-item-card ${isCurrent ? 'active' : ''}`;
+  if (savedUserJson && jwtToken) {
+    // STATE 1: LOGGED IN USER
+    if (loggedInDashboard) loggedInDashboard.classList.remove('hidden');
+    if (authGatewayContainer) authGatewayContainer.classList.add('hidden');
 
-    card.innerHTML = `
-      <div style="display: flex; align-items: center; gap: 10px;">
-        <span style="font-size: 24px;">${p.avatar}</span>
-        <div>
-          <strong style="font-size: 15px; color: #fff;">${p.name}</strong>
-          ${isCurrent ? '<span style="font-size: 11px; color: var(--accent-cyan); display: block;">Activo ahora</span>' : ''}
-        </div>
-      </div>
-      <div style="display: flex; gap: 6px;">
-        ${!isCurrent ? '<button class="btn btn-primary btn-sm select-p-btn">Usar</button>' : ''}
-        ${appState.profiles.length > 1 ? '<button class="btn btn-danger btn-sm del-p-btn">✕</button>' : ''}
-      </div>
-    `;
+    const user = JSON.parse(savedUserJson);
+    const activeProfile = appState.profiles.find(p => p.id === appState.activeProfileId) || { avatar: '👨‍🏽‍🦱', name: user.name };
 
-    const selectBtn = card.querySelector('.select-p-btn');
-    if (selectBtn) {
-      selectBtn.onclick = () => {
-        switchProfile(p.id);
-        profileModal.classList.add('hidden');
-      };
-    }
+    const profileHeroAvatar = document.getElementById('profileHeroAvatar');
+    const editProfileNameInput = document.getElementById('editProfileNameInput');
+    const userEmailDisplay = document.getElementById('userEmailDisplay');
+    const profileWorkoutCount = document.getElementById('profileWorkoutCount');
 
-    const delBtn = card.querySelector('.del-p-btn');
-    if (delBtn) {
-      delBtn.onclick = (e) => {
-        e.stopPropagation();
-        if (confirm(`¿Eliminar el perfil de ${p.name}? Se borrarán sus rutinas e historial.`)) {
-          deleteProfile(p.id);
-        }
-      };
-    }
-
-    profilesList.appendChild(card);
-  });
+    if (profileHeroAvatar) profileHeroAvatar.textContent = activeProfile.avatar || '👨‍🏽‍🦱';
+    if (editProfileNameInput) editProfileNameInput.value = activeProfile.name || user.name;
+    if (userEmailDisplay) userEmailDisplay.textContent = user.email || '';
+    if (profileWorkoutCount) profileWorkoutCount.textContent = appState.workoutHistory ? appState.workoutHistory.length : 0;
+  } else {
+    // STATE 2: AUTH GATEWAY (LOGIN / REGISTER / GUEST)
+    if (loggedInDashboard) loggedInDashboard.classList.add('hidden');
+    if (authGatewayContainer) authGatewayContainer.classList.remove('hidden');
+  }
 }
 
 function switchProfile(profileId) {
@@ -638,7 +687,9 @@ function setupNavigation() {
       if (targetEl) targetEl.classList.add('active');
 
       if (targetTab === 'tab-analytics' && typeof renderAnalyticsDashboard === 'function') {
-        renderAnalyticsDashboard();
+        setTimeout(() => {
+          renderAnalyticsDashboard();
+        }, 60);
       }
     });
   });
@@ -887,7 +938,7 @@ function renderLiveExercisesCards() {
           </div>
           <div class="stepper-group">
             <button class="btn-step btn-weight-minus" ${set.completed ? 'disabled' : ''}>-</button>
-            <input type="number" step="${unit === 'lb' ? '5' : '0.5'}" class="set-input weight-input" value="${set.weight}" ${set.completed ? 'disabled' : ''}>
+            <input type="number" step="${unit === 'lb' ? '5' : '0.5'}" inputmode="decimal" pattern="[0-9.]*" class="set-input weight-input" value="${set.weight}" ${set.completed ? 'disabled' : ''}>
             <button class="btn-step btn-weight-plus" ${set.completed ? 'disabled' : ''}>+</button>
           </div>
         </div>
@@ -897,7 +948,7 @@ function renderLiveExercisesCards() {
           <label class="set-input-label" style="margin-bottom: 2px;">Reps (${ex.unit})</label>
           <div class="stepper-group">
             <button class="btn-step btn-reps-minus" ${set.completed ? 'disabled' : ''}>-</button>
-            <input type="number" class="set-input reps-input" value="${set.actualReps}" ${set.completed ? 'disabled' : ''}>
+            <input type="number" inputmode="numeric" pattern="[0-9]*" class="set-input reps-input" value="${set.actualReps}" ${set.completed ? 'disabled' : ''}>
             <button class="btn-step btn-reps-plus" ${set.completed ? 'disabled' : ''}>+</button>
           </div>
         </div>
