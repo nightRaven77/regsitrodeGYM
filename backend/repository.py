@@ -4,18 +4,17 @@ import sqlite3
 from typing import Dict, Any, Optional, List
 from sqlalchemy.orm import Session
 
+import urllib.parse
+
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DB_FILE = os.path.join(BASE_DIR, "gymtracker.db")
 
-MUSCLEWIKI_MAP = {
-    'Pierna': 'https://musclewiki.com/exercises/male/quads',
-    'Pectoral': 'https://musclewiki.com/exercises/male/chest',
-    'Espalda': 'https://musclewiki.com/exercises/male/lats',
-    'Hombro': 'https://musclewiki.com/exercises/male/shoulders',
-    'Bíceps': 'https://musclewiki.com/exercises/male/biceps',
-    'Tríceps': 'https://musclewiki.com/exercises/male/triceps',
-    'Abdomen': 'https://musclewiki.com/exercises/male/abs'
-}
+def get_musclewiki_url(name: str, category: str) -> str:
+    """Generate reliable MuscleWiki URL (Search query or Category directory) that never 404s."""
+    if name:
+        query = urllib.parse.quote_plus(name)
+        return f"https://musclewiki.com/search?q={query}"
+    return "https://musclewiki.com/directory"
 
 INITIAL_CATALOG_SEED = [
   # --- PIERNA ---
@@ -156,6 +155,17 @@ class StorageRepository:
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 )
             """)
+
+            # Ensure SQLite schema migration if table already existed without new columns
+            cursor.execute("PRAGMA table_info(exercises)")
+            columns = [col[1] for col in cursor.fetchall()]
+            if 'unit' not in columns:
+                cursor.execute("ALTER TABLE exercises ADD COLUMN unit TEXT DEFAULT 'reps'")
+            if 'equipment' not in columns:
+                cursor.execute("ALTER TABLE exercises ADD COLUMN equipment TEXT DEFAULT 'General'")
+            if 'musclewiki_url' not in columns:
+                cursor.execute("ALTER TABLE exercises ADD COLUMN musclewiki_url TEXT")
+
             cursor.execute("SELECT COUNT(*) FROM profiles")
             if cursor.fetchone()[0] == 0:
                 cursor.execute("INSERT INTO profiles VALUES ('prof_guest', 'Invitado / Anónimo', '👤')")
@@ -164,7 +174,7 @@ class StorageRepository:
             cursor.execute("SELECT COUNT(*) FROM exercises")
             if cursor.fetchone()[0] == 0:
                 for item in INITIAL_CATALOG_SEED:
-                    mw_url = MUSCLEWIKI_MAP.get(item['category'], f"https://musclewiki.com/search?q={item['name']}")
+                    mw_url = get_musclewiki_url(item['name'], item['category'])
                     cursor.execute("""
                         INSERT INTO exercises (id, name, category, equipment, default_sets, default_reps, unit, image_url, musclewiki_url)
                         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
@@ -185,7 +195,7 @@ class StorageRepository:
                 if not ex_models:
                     # Seed Supabase PostgreSQL if empty
                     for item in INITIAL_CATALOG_SEED:
-                        mw_url = MUSCLEWIKI_MAP.get(item['category'], f"https://musclewiki.com/search?q={item['name']}")
+                        mw_url = get_musclewiki_url(item['name'], item['category'])
                         m = ExerciseModel(
                             id=item['id'], name=item['name'], category=item['category'],
                             equipment=item['equipment'], default_sets=item['defaultSets'],
@@ -205,7 +215,7 @@ class StorageRepository:
                     "defaultReps": ex.default_reps or 12,
                     "unit": ex.weight_unit or "reps",
                     "imageUrl": ex.image_url,
-                    "musclewikiUrl": ex.musclewiki_url or MUSCLEWIKI_MAP.get(ex.category, f"https://musclewiki.com/search?q={ex.name}")
+                    "musclewikiUrl": get_musclewiki_url(ex.name, ex.category) if (not ex.musclewiki_url or "exercises/male" in ex.musclewiki_url) else ex.musclewiki_url
                 } for ex in ex_models]
             except Exception as e:
                 print(f"⚠️ Error leyendo ejercicios de Supabase: {e}")
@@ -226,7 +236,7 @@ class StorageRepository:
             "defaultReps": r[5] or 12,
             "unit": r[6] or "reps",
             "imageUrl": r[7],
-            "musclewikiUrl": r[8] or MUSCLEWIKI_MAP.get(r[2], f"https://musclewiki.com/search?q={r[1]}")
+            "musclewikiUrl": get_musclewiki_url(r[1], r[2]) if (not r[8] or "exercises/male" in r[8]) else r[8]
         } for r in rows]
 
     @staticmethod
@@ -239,7 +249,7 @@ class StorageRepository:
         default_sets = ex_dict.get('defaultSets', 1)
         default_reps = ex_dict.get('defaultReps', 12)
         unit = ex_dict.get('unit', 'reps')
-        mw_url = ex_dict.get('musclewikiUrl') or MUSCLEWIKI_MAP.get(category, f"https://musclewiki.com/search?q={name}")
+        mw_url = ex_dict.get('musclewikiUrl') or get_musclewiki_url(name, category)
 
         if has_supabase and db is not None:
             try:
