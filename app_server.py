@@ -51,11 +51,20 @@ class UserLoginSchema(BaseModel):
     email: str
     password: str
 
+class UserProfileUpdateSchema(BaseModel):
+    name: Optional[str] = None
+    avatar: Optional[str] = None
+
 class SyncPayload(BaseModel):
     routines: Optional[List[Dict[str, Any]]] = None
     weightsHistory: Optional[Dict[str, Any]] = None
     workoutHistory: Optional[List[Dict[str, Any]]] = None
     activeSession: Optional[Dict[str, Any]] = None
+
+# --- User & Profile Endpoints ---
+@app.put("/api/user/profile/{user_id}")
+def update_user_profile(user_id: str, payload: UserProfileUpdateSchema, db: Any = Depends(get_db)):
+    return StorageRepository.update_user_profile(user_id, name=payload.name, avatar=payload.avatar, db=db, has_supabase=HAS_SUPABASE)
 
 # --- Auth Endpoints ---
 @app.post("/api/auth/register")

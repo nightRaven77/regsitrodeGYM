@@ -55,8 +55,12 @@ class StorageRepository:
         if has_supabase and db is not None:
             try:
                 from backend.models import RoutineModel, WorkoutLogModel, ProfileDataModel
+                p_data = db.query(ProfileDataModel).filter(ProfileDataModel.profile_id == profile_id).first()
                 r_models = db.query(RoutineModel).filter(RoutineModel.user_id == profile_id).all()
-                if r_models:
+
+                if p_data and p_data.routines_json is not None:
+                    routines = json.loads(p_data.routines_json)
+                elif r_models:
                     routines = [{"id": r.id, "name": r.name, "days": r.days_data} for r in r_models]
 
                 w_models = db.query(WorkoutLogModel).filter(WorkoutLogModel.user_id == profile_id).order_by(WorkoutLogModel.created_at.desc()).all()
@@ -72,10 +76,7 @@ class StorageRepository:
                         "detailedExercises": w.detailed_exercises
                     } for w in w_models]
 
-                p_data = db.query(ProfileDataModel).filter(ProfileDataModel.profile_id == profile_id).first()
                 if p_data:
-                    if not routines and p_data.routines_json:
-                        routines = json.loads(p_data.routines_json)
                     weights_history = json.loads(p_data.weights_json) if p_data.weights_json else {}
                     if not workout_history and p_data.history_json:
                         workout_history = json.loads(p_data.history_json)
@@ -83,7 +84,7 @@ class StorageRepository:
 
                 if routines is not None or len(workout_history) > 0 or p_data:
                     return {
-                        "routines": routines,
+                        "routines": routines if routines is not None else [],
                         "weightsHistory": weights_history,
                         "workoutHistory": workout_history,
                         "activeSession": active_session,
@@ -100,7 +101,7 @@ class StorageRepository:
         conn.close()
 
         if row:
-            routines = json.loads(row[0]) if row[0] else None
+            routines = json.loads(row[0]) if row[0] is not None else None
             weights_history = json.loads(row[1]) if row[1] else {}
             workout_history = json.loads(row[2]) if row[2] else []
             active_session = json.loads(row[3]) if row[3] else None
@@ -133,14 +134,13 @@ class StorageRepository:
 
                 if payload.routines is not None:
                     p_data.routines_json = routines_str
-                if payload.weightsHistory is not None:
-                    p_data.weights_json = weights_str
-                if payload.workoutHistory is not None:
-                    p_data.history_json = history_str
-                if payload.activeSession is not None:
-                    p_data.active_session_json = active_str
+                    # Delete routines from DB table if they are no longer in payload.routines (handles routine deletion)
+                    active_ids = {r.get('id') for r in payload.routines if isinstance(r, dict) and r.get('id')}
+                    existing_routines = db.query(RoutineModel).filter(RoutineModel.user_id == profile_id).all()
+                    for er in existing_routines:
+                        if er.id not in active_ids:
+                            db.delete(er)
 
-                if payload.routines:
                     for r in payload.routines:
                         r_id = r.get('id')
                         if r_id:
@@ -151,6 +151,13 @@ class StorageRepository:
                             else:
                                 r_model.name = r.get('name', r_model.name)
                                 r_model.days_data = r.get('days', r_model.days_data)
+
+                if payload.weightsHistory is not None:
+                    p_data.weights_json = weights_str
+                if payload.workoutHistory is not None:
+                    p_data.history_json = history_str
+                if payload.activeSession is not None:
+                    p_data.active_session_json = active_str
 
                 if payload.workoutHistory:
                     for w in payload.workoutHistory:
@@ -196,3 +203,40 @@ class StorageRepository:
             "primary_database": "supabase" if supabase_success else "sqlite_fallback",
             "profile_id": profile_id
         }
+
+    @staticmethod
+    def update_user_profile(user_id: str, name: Optional[str] = None, avatar: Optional[str] = None, db: Optional[Session] = None, has_supabase: bool = False) -> Dict[str, Any]:
+        """Update user profile name and/or avatar in Supabase and SQLite fallback."""
+        updated_user = {"id": user_id}
+
+        if has_supabase and db is not None:
+            try:
+                from backend.models import UserModel
+                user = db.query(UserModel).filter(UserModel.id == user_id).first()
+                if user:
+                    if name:
+                        user.name = name
+                    if avatar:
+                        user.avatar = avatar
+                    db.commit()
+                    db.refresh(user)
+                    updated_user = {"id": user.id, "name": user.name, "email": user.email, "avatar": user.avatar}
+            except Exception as e:
+                print(f"⚠️ Error actualizando perfil en Supabase: {e}")
+                db.rollback()
+
+        try:
+            conn = sqlite3.connect(DB_FILE)
+            cursor = conn.cursor()
+            if name and avatar:
+                cursor.execute("UPDATE profiles SET name = ?, avatar = ? WHERE id = ?", (name, avatar, user_id))
+            elif name:
+                cursor.execute("UPDATE profiles SET name = ? WHERE id = ?", (name, user_id))
+            elif avatar:
+                cursor.execute("UPDATE profiles SET avatar = ? WHERE id = ?", (avatar, user_id))
+            conn.commit()
+            conn.close()
+        except Exception as e:
+            print(f"ℹ️ SQLite profile update error: {e}")
+
+        return {"status": "updated", "user": updated_user}

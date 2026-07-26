@@ -914,12 +914,15 @@ body {
 }
 
 .profile-avatar-badge {
-  font-size: 42px;
+  font-size: 34px;
   width: 64px;
   height: 64px;
   display: flex;
   align-items: center;
   justify-content: center;
+  line-height: 1;
+  text-align: center;
+  user-select: none;
   background: var(--bg-input);
   border: 2px solid var(--accent-cyan);
   border-radius: 50%;
@@ -941,23 +944,28 @@ body {
   padding: 8px;
   border-radius: var(--radius-sm);
   border: 1px solid var(--border-color);
+  justify-content: flex-start;
 }
 
 .emoji-picker-item {
-  font-size: 22px;
-  width: 38px;
-  height: 38px;
+  font-size: 20px;
+  width: 40px;
+  height: 40px;
   display: flex;
   align-items: center;
   justify-content: center;
+  line-height: 1;
+  text-align: center;
+  user-select: none;
   border-radius: 8px;
   cursor: pointer;
   transition: all 0.15s ease;
 }
 
 .emoji-picker-item:hover, .emoji-picker-item.selected {
-  background: var(--accent-cyan);
-  transform: scale(1.15);
+  background: rgba(0, 242, 254, 0.25);
+  border: 1px solid var(--accent-cyan);
+  transform: scale(1.1);
 }
 
 .auth-tabs-group {
@@ -1332,7 +1340,7 @@ body {
 
         <!-- Emoji Picker Accordion/Grid -->
         <div id="avatarPickerGrid" class="emoji-grid-picker hidden">
-          <span class="emoji-picker-item" data-emoji="👨‍">👨‍/span>
+          <span class="emoji-picker-item" data-emoji="👤">👤</span>
             <span class="emoji-picker-item" data-emoji="👩🏻">👩🏻</span>
             <span class="emoji-picker-item" data-emoji="⚡">⚡</span>
             <span class="emoji-picker-item" data-emoji="🏋️‍♂️">🏋️‍♂️</span>

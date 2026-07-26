@@ -390,6 +390,34 @@ function setupBackupExportImportHandlers() {
   }
 }
 
+async function syncUserProfileToCloud(name, avatar) {
+  const pId = appState.activeProfileId;
+
+  // Update local user account storage
+  const savedUserJson = localStorage.getItem(STORAGE_KEYS.USER_ACCOUNT);
+  if (savedUserJson) {
+    try {
+      const u = JSON.parse(savedUserJson);
+      if (name) u.name = name;
+      if (avatar) u.avatar = avatar;
+      localStorage.setItem(STORAGE_KEYS.USER_ACCOUNT, JSON.stringify(u));
+    } catch (e) {}
+  }
+
+  // Sync to backend Supabase PostgreSQL / SQLite fallback
+  if (pId && pId !== 'prof_guest' && !pId.startsWith('prof_guest')) {
+    try {
+      await fetch(`/api/user/profile/${pId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, avatar })
+      });
+    } catch (err) {
+      console.log('Error syncing profile to cloud:', err);
+    }
+  }
+}
+
 function setupProfileHeroEditing() {
   const profileHeroAvatar = document.getElementById('profileHeroAvatar');
   const avatarPickerGrid = document.getElementById('avatarPickerGrid');
@@ -408,6 +436,7 @@ function setupProfileHeroEditing() {
         if (activeProfile) {
           activeProfile.avatar = emoji;
           saveProfiles();
+          syncUserProfileToCloud(null, emoji);
           updateHeaderProfilePill();
           if (profileHeroAvatar) profileHeroAvatar.textContent = emoji;
         }
@@ -424,6 +453,7 @@ function setupProfileHeroEditing() {
       if (activeProfile) {
         activeProfile.name = newName;
         saveProfiles();
+        syncUserProfileToCloud(newName, null);
         updateHeaderProfilePill();
         alert('¡Nombre de perfil actualizado!');
       }
