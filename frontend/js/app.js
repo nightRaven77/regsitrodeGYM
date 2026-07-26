@@ -992,6 +992,15 @@ let editingRoutine = null;
 
 function renderRoutinesList() {
   routinesListContainer.innerHTML = '';
+  if (!appState.routines || appState.routines.length === 0) {
+    routinesListContainer.innerHTML = `
+      <div style="color: var(--text-muted); font-size: 13px; text-align: center; padding: 20px;">
+        No tienes ninguna rutina configurada. Toca <strong>"+ Nueva"</strong> arriba para armar tu rutina personalizada desde 0.
+      </div>
+    `;
+    return;
+  }
+
   appState.routines.forEach(r => {
     const item = document.createElement('div');
     item.className = 'card';
@@ -1005,11 +1014,24 @@ function renderRoutinesList() {
         </div>
         <div style="display: flex; gap: 6px;">
           <button class="btn btn-secondary btn-sm edit-r-btn">Editar</button>
+          <button class="btn btn-danger btn-sm del-r-btn">🗑️</button>
         </div>
       </div>
     `;
 
     item.querySelector('.edit-r-btn').onclick = () => openRoutineEditor(r);
+    item.querySelector('.del-r-btn').onclick = () => {
+      if (confirm(`¿Eliminar la rutina "${r.name}"?`)) {
+        appState.routines = appState.routines.filter(item => item.id !== r.id);
+        if (appState.activeRoutineId === r.id) {
+          appState.activeRoutineId = appState.routines.length > 0 ? appState.routines[0].id : null;
+        }
+        saveRoutines();
+        renderRoutinesList();
+        setupRoutineDropdowns();
+      }
+    };
+
     routinesListContainer.appendChild(item);
   });
 }
@@ -1017,9 +1039,9 @@ function renderRoutinesList() {
 btnNewRoutine.onclick = () => {
   openRoutineEditor({
     id: 'routine_' + Date.now(),
-    name: 'Nueva Rutina',
+    name: 'Mi Rutina Personalizada',
     days: [
-      { dayName: 'Día 1: Pierna & Abdomen', exerciseIds: ['p1', 'p2', 'p4', 'ab1'] }
+      { dayName: 'Día 1: Mi primer día', exerciseIds: [] }
     ]
   });
 };
