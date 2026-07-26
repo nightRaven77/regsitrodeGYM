@@ -70,7 +70,7 @@ class UserRegisterSchema(BaseModel):
     name: str
     email: str
     password: str
-    avatar: str = "👨‍🏽‍🦱"
+    avatar: str = "👤"
 
 class UserLoginSchema(BaseModel):
     email: str
@@ -131,10 +131,11 @@ def register_user(payload: UserRegisterSchema):
 def login_user(payload: UserLoginSchema):
     try:
         if not HAS_SUPABASE:
-            token = create_access_token({"sub": "prof_erick", "email": payload.email})
+            u_id = "prof_" + str(int(os.urandom(4).hex(), 16))
+            token = create_access_token({"sub": u_id, "email": payload.email})
             return {
                 "token": token,
-                "user": {"id": "prof_erick", "name": "Erick", "email": payload.email, "avatar": "👨‍🏽‍🦱"}
+                "user": {"id": u_id, "name": payload.email.split("@")[0], "email": payload.email, "avatar": "👤"}
             }
 
         db = SessionLocal()
@@ -206,10 +207,6 @@ def get_profile_state(profile_id: str):
             if routines is not None or len(workoutHistory) > 0 or p_data:
                 source = "supabase_primary"
                 return {
-                    "profiles": [
-                        {"id": "prof_erick", "name": "Erick", "avatar": "👨‍🏽‍🦱"},
-                        {"id": "prof_pareja", "name": "Pareja", "avatar": "👩🏻"}
-                    ],
                     "routines": routines,
                     "weightsHistory": weightsHistory,
                     "workoutHistory": workoutHistory,
@@ -235,10 +232,6 @@ def get_profile_state(profile_id: str):
         activeSession = json.loads(row[3]) if row[3] else None
 
     return {
-        "profiles": [
-            {"id": "prof_erick", "name": "Erick", "avatar": "👨‍🏽‍🦱"},
-            {"id": "prof_pareja", "name": "Pareja", "avatar": "👩🏻"}
-        ],
         "routines": routines,
         "weightsHistory": weightsHistory,
         "workoutHistory": workoutHistory,

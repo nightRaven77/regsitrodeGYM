@@ -107,11 +107,6 @@ async function fetchCloudState(pId) {
       const data = await res.json();
       let updated = false;
 
-      if (data.profiles && data.profiles.length > 0) {
-        appState.profiles = data.profiles;
-        localStorage.setItem('gym_profiles', JSON.stringify(appState.profiles));
-        updated = true;
-      }
       if (data.routines && data.routines.length > 0) {
         appState.routines = data.routines;
         localStorage.setItem(`gym_routines_${pId}`, JSON.stringify(appState.routines));
@@ -437,7 +432,7 @@ function setupProfileUI() {
   const authStatusMessage = document.getElementById('authStatusMessage');
 
   let currentAuthMode = 'login'; // 'login' | 'register' | 'guest'
-  let selectedRegisterEmoji = '👨‍🏽‍🦱';
+  let selectedRegisterEmoji = '👤';
 
   if (tabAuthLogin && tabAuthRegister && tabAuthGuest) {
     tabAuthLogin.onclick = () => {
@@ -597,14 +592,14 @@ function renderProfilesModal() {
     if (authGatewayContainer) authGatewayContainer.classList.add('hidden');
 
     const user = JSON.parse(savedUserJson);
-    const activeProfile = appState.profiles.find(p => p.id === appState.activeProfileId) || { avatar: '👨‍🏽‍🦱', name: user.name };
+    const activeProfile = appState.profiles.find(p => p.id === appState.activeProfileId) || { avatar: '👤', name: user.name };
 
     const profileHeroAvatar = document.getElementById('profileHeroAvatar');
     const editProfileNameInput = document.getElementById('editProfileNameInput');
     const userEmailDisplay = document.getElementById('userEmailDisplay');
     const profileWorkoutCount = document.getElementById('profileWorkoutCount');
 
-    if (profileHeroAvatar) profileHeroAvatar.textContent = activeProfile.avatar || '👨‍🏽‍🦱';
+    if (profileHeroAvatar) profileHeroAvatar.textContent = activeProfile.avatar || '👤';
     if (editProfileNameInput) editProfileNameInput.value = activeProfile.name || user.name;
     if (userEmailDisplay) userEmailDisplay.textContent = user.email || '';
     if (profileWorkoutCount) profileWorkoutCount.textContent = appState.workoutHistory ? appState.workoutHistory.length : 0;
