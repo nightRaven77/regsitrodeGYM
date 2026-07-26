@@ -223,10 +223,6 @@ const activeProfileAvatar = document.getElementById('activeProfileAvatar');
 const activeProfileName = document.getElementById('activeProfileName');
 const profileModal = document.getElementById('profileModal');
 const btnCloseProfileModal = document.getElementById('btnCloseProfileModal');
-const profilesList = document.getElementById('profilesList');
-const newProfileAvatar = document.getElementById('newProfileAvatar');
-const newProfileName = document.getElementById('newProfileName');
-const btnCreateProfile = document.getElementById('btnCreateProfile');
 
 // Rest Timer Banner elements
 const restTimerBanner = document.getElementById('restTimerBanner');
@@ -278,36 +274,18 @@ function refreshCurrentProfileUI() {
 
 // --- Multi-Profile UI Setup & Handlers ---
 function setupProfileUI() {
-  btnProfileSelect.addEventListener('click', () => {
-    renderProfilesModal();
-    profileModal.classList.remove('hidden');
-  });
+  if (btnProfileSelect) {
+    btnProfileSelect.addEventListener('click', () => {
+      renderProfilesModal();
+      profileModal.classList.remove('hidden');
+    });
+  }
 
-  btnCloseProfileModal.addEventListener('click', () => {
-    profileModal.classList.add('hidden');
-  });
-
-  btnCreateProfile.addEventListener('click', () => {
-    const name = newProfileName.value.trim();
-    if (!name) {
-      alert('Por favor ingresa un nombre para el perfil.');
-      return;
-    }
-
-    const newProfile = {
-      id: 'prof_' + Date.now(),
-      name: name,
-      avatar: newProfileAvatar.value
-    };
-
-    appState.profiles.push(newProfile);
-    saveProfiles();
-    newProfileName.value = '';
-
-    // Switch to newly created profile
-    switchProfile(newProfile.id);
-    profileModal.classList.add('hidden');
-  });
+  if (btnCloseProfileModal) {
+    btnCloseProfileModal.addEventListener('click', () => {
+      profileModal.classList.add('hidden');
+    });
+  }
 
   // Backup Export JSON handler
   const btnExportBackup = document.getElementById('btnExportBackup');
