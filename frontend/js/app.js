@@ -347,7 +347,6 @@ function setupAddExerciseModal() {
       const equipment = document.getElementById('newExEquipment').value.trim() || 'General';
       const defaultSets = parseInt(document.getElementById('newExSets').value, 10) || 1;
       const defaultReps = parseInt(document.getElementById('newExReps').value, 10) || 12;
-      const mwUrl = document.getElementById('newExMuscleWiki').value.trim();
 
       if (!name) {
         alert('Por favor ingresa el nombre del ejercicio.');
@@ -355,8 +354,7 @@ function setupAddExerciseModal() {
       }
 
       const payload = {
-        name, category, equipment, defaultSets, defaultReps, unit: 'reps',
-        musclewikiUrl: mwUrl || undefined
+        name, category, equipment, defaultSets, defaultReps, unit: 'reps'
       };
 
       try {
@@ -1444,10 +1442,6 @@ function renderCatalog(category = 'ALL', searchQuery = '') {
     const icon = categoryIcons[ex.category] || '🏋️';
     const lastHistory = appState.weightsHistory ? appState.weightsHistory[ex.id] : null;
     const lastWeightStr = (lastHistory && lastHistory.weight !== undefined) ? `${lastHistory.weight} ${lastHistory.unit || 'kg'}` : 'Sin registro de peso';
-    const rawMwUrl = ex.musclewikiUrl || '';
-    const mwUrl = (rawMwUrl.startsWith('http') && !rawMwUrl.includes('musclewiki.com/search') && !rawMwUrl.includes('exercises/male'))
-      ? rawMwUrl
-      : `https://www.google.com/search?q=${encodeURIComponent('site:musclewiki.com ' + ex.name)}`;
     const equipment = ex.equipment || 'General';
 
     const card = document.createElement('div');
@@ -1466,10 +1460,6 @@ function renderCatalog(category = 'ALL', searchQuery = '') {
             <span class="badge" style="background: rgba(255, 255, 255, 0.08); color: var(--text-muted); border: 1px solid var(--border-color);">${equipment}</span>
           </div>
         </div>
-        <a href="${mwUrl}" target="_blank" rel="noopener noreferrer" class="btn btn-secondary btn-sm"
-           style="font-size: 11px; padding: 4px 10px; text-decoration: none; display: flex; align-items: center; gap: 4px; border-color: var(--accent-cyan); color: var(--accent-cyan); white-space: nowrap; font-weight: 600;">
-          📺 Guía MuscleWiki ↗
-        </a>
       </div>
       <div style="font-size: 11px; color: var(--text-muted); display: flex; justify-content: space-between; align-items: center; background: rgba(0,0,0,0.25); padding: 6px 10px; border-radius: var(--radius-sm); border: 1px solid rgba(255, 255, 255, 0.05);">
         <span>📊 Carga sugerida: <strong style="color: #fff;">${lastWeightStr}</strong></span>
@@ -1506,9 +1496,16 @@ function renderHistory() {
     delLogBtn.onclick = (e) => {
       e.stopPropagation();
       if (confirm('¿Borrar este registro del historial?')) {
-        appState.workoutHistory = appState.workoutHistory.filter(h => h.id !== record.id);
+        const deletedId = record.id;
+        appState.workoutHistory = appState.workoutHistory.filter(h => h.id !== deletedId);
         saveWorkoutHistory();
         renderHistory();
+
+        // Explicit cloud deletion endpoint call
+        const pId = appState.activeProfileId;
+        if (pId && pId !== 'prof_guest' && !pId.startsWith('prof_guest')) {
+          fetch(`/api/history/${pId}/${deletedId}`, { method: 'DELETE' }).catch(() => {});
+        }
       }
     };
 

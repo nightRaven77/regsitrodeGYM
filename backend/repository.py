@@ -11,13 +11,6 @@ from backend.auth import get_password_hash, verify_password, create_access_token
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DB_FILE = os.path.join(BASE_DIR, "gymtracker.db")
 
-def get_musclewiki_url(name: str, category: str) -> str:
-    """Generate 100% working MuscleWiki search link via Google site search or direct directory."""
-    if name:
-        query = urllib.parse.quote_plus(f"site:musclewiki.com {name}")
-        return f"https://www.google.com/search?q={query}"
-    return "https://musclewiki.com/"
-
 INITIAL_CATALOG_SEED = [
   # --- PIERNA ---
   { "id": 'p1', "category": 'Pierna', "name": 'Leg Curl Sentado', "equipment": 'Máquina', "defaultSets": 1, "defaultReps": 15, "unit": 'reps' },
@@ -186,11 +179,10 @@ class StorageRepository:
             cursor.execute("SELECT COUNT(*) FROM exercises")
             if cursor.fetchone()[0] == 0:
                 for item in INITIAL_CATALOG_SEED:
-                    mw_url = get_musclewiki_url(item['name'], item['category'])
                     cursor.execute("""
-                        INSERT INTO exercises (id, name, category, equipment, default_sets, default_reps, unit, image_url, musclewiki_url)
-                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-                    """, (item['id'], item['name'], item['category'], item['equipment'], item['defaultSets'], item['defaultReps'], item['unit'], None, mw_url))
+                        INSERT INTO exercises (id, name, category, equipment, default_sets, default_reps, unit, image_url)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                    """, (item['id'], item['name'], item['category'], item['equipment'], item['defaultSets'], item['defaultReps'], item['unit'], None))
 
             conn.commit()
             conn.close()
@@ -305,12 +297,10 @@ class StorageRepository:
                 if not ex_models:
                     # Seed Supabase PostgreSQL if empty
                     for item in INITIAL_CATALOG_SEED:
-                        mw_url = get_musclewiki_url(item['name'], item['category'])
                         m = ExerciseModel(
                             id=item['id'], name=item['name'], category=item['category'],
                             equipment=item['equipment'], default_sets=item['defaultSets'],
-                            default_reps=item['defaultReps'], weight_unit=item['unit'],
-                            musclewiki_url=mw_url
+                            default_reps=item['defaultReps'], weight_unit=item['unit']
                         )
                         db.add(m)
                     db.commit()
@@ -324,8 +314,7 @@ class StorageRepository:
                     "defaultSets": ex.default_sets or 1,
                     "defaultReps": ex.default_reps or 12,
                     "unit": ex.weight_unit or "reps",
-                    "imageUrl": ex.image_url,
-                    "musclewikiUrl": get_musclewiki_url(ex.name, ex.category) if (not ex.musclewiki_url or "exercises/male" in ex.musclewiki_url) else ex.musclewiki_url
+                    "imageUrl": ex.image_url
                 } for ex in ex_models]
             except Exception as e:
                 print(f"⚠️ Error leyendo ejercicios de Supabase: {e}")
@@ -333,7 +322,7 @@ class StorageRepository:
         # SQLite Fallback
         conn = sqlite3.connect(DB_FILE)
         cursor = conn.cursor()
-        cursor.execute("SELECT id, name, category, equipment, default_sets, default_reps, unit, image_url, musclewiki_url FROM exercises ORDER BY category, name")
+        cursor.execute("SELECT id, name, category, equipment, default_sets, default_reps, unit, image_url FROM exercises ORDER BY category, name")
         rows = cursor.fetchall()
         conn.close()
 
@@ -345,8 +334,7 @@ class StorageRepository:
             "defaultSets": r[4] or 1,
             "defaultReps": r[5] or 12,
             "unit": r[6] or "reps",
-            "imageUrl": r[7],
-            "musclewikiUrl": get_musclewiki_url(r[1], r[2]) if (not r[8] or "exercises/male" in r[8]) else r[8]
+            "imageUrl": r[7]
         } for r in rows]
 
     @staticmethod
@@ -359,7 +347,6 @@ class StorageRepository:
         default_sets = ex_dict.get('defaultSets', 1)
         default_reps = ex_dict.get('defaultReps', 12)
         unit = ex_dict.get('unit', 'reps')
-        mw_url = ex_dict.get('musclewikiUrl') or get_musclewiki_url(name, category)
 
         if has_supabase and db is not None:
             try:
@@ -368,8 +355,7 @@ class StorageRepository:
                 if not ex_m:
                     ex_m = ExerciseModel(
                         id=ex_id, name=name, category=category, equipment=equipment,
-                        default_sets=default_sets, default_reps=default_reps, weight_unit=unit,
-                        musclewiki_url=mw_url
+                        default_sets=default_sets, default_reps=default_reps, weight_unit=unit
                     )
                     db.add(ex_m)
                 else:
@@ -379,7 +365,6 @@ class StorageRepository:
                     ex_m.default_sets = default_sets
                     ex_m.default_reps = default_reps
                     ex_m.weight_unit = unit
-                    ex_m.musclewiki_url = mw_url
                 db.commit()
             except Exception as e:
                 print(f"⚠️ Error guardando ejercicio en Supabase: {e}")
@@ -389,9 +374,9 @@ class StorageRepository:
             conn = sqlite3.connect(DB_FILE)
             cursor = conn.cursor()
             cursor.execute("""
-                INSERT OR REPLACE INTO exercises (id, name, category, equipment, default_sets, default_reps, unit, musclewiki_url)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-            """, (ex_id, name, category, equipment, default_sets, default_reps, unit, mw_url))
+                INSERT OR REPLACE INTO exercises (id, name, category, equipment, default_sets, default_reps, unit)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
+            """, (ex_id, name, category, equipment, default_sets, default_reps, unit))
             conn.commit()
             conn.close()
         except Exception as e:
@@ -399,7 +384,7 @@ class StorageRepository:
 
         return {
             "id": ex_id, "name": name, "category": category, "equipment": equipment,
-            "defaultSets": default_sets, "defaultReps": default_reps, "unit": unit, "musclewikiUrl": mw_url
+            "defaultSets": default_sets, "defaultReps": default_reps, "unit": unit
         }
 
     @staticmethod
@@ -514,6 +499,13 @@ class StorageRepository:
                     p_data.weights_json = weights_str
                 if payload.workoutHistory is not None:
                     p_data.history_json = history_str
+                    # Delete WorkoutLogModel entries from DB table if they are no longer in payload.workoutHistory
+                    active_history_ids = {w.get('id') for w in payload.workoutHistory if isinstance(w, dict) and w.get('id')}
+                    existing_logs = db.query(WorkoutLogModel).filter(WorkoutLogModel.user_id == profile_id).all()
+                    for el in existing_logs:
+                        if el.id not in active_history_ids:
+                            db.delete(el)
+
                 p_data.active_session_json = active_str
 
                 if payload.workoutHistory:
@@ -560,6 +552,43 @@ class StorageRepository:
             "primary_database": "supabase" if supabase_success else "sqlite_fallback",
             "profile_id": profile_id
         }
+
+    @staticmethod
+    def delete_workout_log(profile_id: str, log_id: str, db: Optional[Session] = None, has_supabase: bool = False) -> Dict[str, Any]:
+        """Delete a workout log entry from Supabase PostgreSQL and SQLite fallback DB."""
+        if has_supabase and db is not None:
+            try:
+                from backend.models import WorkoutLogModel, ProfileDataModel
+                w_model = db.query(WorkoutLogModel).filter(WorkoutLogModel.id == log_id, WorkoutLogModel.user_id == profile_id).first()
+                if w_model:
+                    db.delete(w_model)
+
+                p_data = db.query(ProfileDataModel).filter(ProfileDataModel.profile_id == profile_id).first()
+                if p_data and p_data.history_json:
+                    history = json.loads(p_data.history_json)
+                    updated_history = [h for h in history if isinstance(h, dict) and h.get('id') != log_id]
+                    p_data.history_json = json.dumps(updated_history)
+
+                db.commit()
+            except Exception as e:
+                print(f"⚠️ Error borrando historial de Supabase: {e}")
+                db.rollback()
+
+        try:
+            conn = sqlite3.connect(DB_FILE)
+            cursor = conn.cursor()
+            cursor.execute("SELECT history_json FROM profile_data WHERE profile_id = ?", (profile_id,))
+            row = cursor.fetchone()
+            if row and row[0]:
+                history = json.loads(row[0])
+                updated_history = [h for h in history if isinstance(h, dict) and h.get('id') != log_id]
+                cursor.execute("UPDATE profile_data SET history_json = ? WHERE profile_id = ?", (json.dumps(updated_history), profile_id))
+                conn.commit()
+            conn.close()
+        except Exception as e:
+            print(f"ℹ️ SQLite delete history error: {e}")
+
+        return {"status": "deleted", "id": log_id}
 
     @staticmethod
     def update_user_profile(user_id: str, name: Optional[str] = None, avatar: Optional[str] = None, db: Optional[Session] = None, has_supabase: bool = False) -> Dict[str, Any]:

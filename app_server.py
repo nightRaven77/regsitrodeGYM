@@ -69,12 +69,15 @@ class ExerciseCreateSchema(BaseModel):
     defaultSets: Optional[int] = 1
     defaultReps: Optional[int] = 12
     unit: Optional[str] = "reps"
-    musclewikiUrl: Optional[str] = None
 
 # --- User & Profile Endpoints ---
 @app.put("/api/user/profile/{user_id}")
 def update_user_profile(user_id: str, payload: UserProfileUpdateSchema, db: Any = Depends(get_db)):
     return StorageRepository.update_user_profile(user_id, name=payload.name, avatar=payload.avatar, db=db, has_supabase=HAS_SUPABASE)
+
+@app.delete("/api/history/{profile_id}/{log_id}")
+def delete_workout_history_log(profile_id: str, log_id: str, db: Any = Depends(get_db)):
+    return StorageRepository.delete_workout_log(profile_id, log_id, db=db, has_supabase=HAS_SUPABASE)
 
 # --- Exercise Catalog Endpoints ---
 @app.get("/api/exercises")
