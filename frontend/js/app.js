@@ -991,6 +991,16 @@ function startNewWorkoutSession() {
 }
 
 function resumeActiveSessionUI() {
+  if (!appState.activeSession || !appState.activeSession.exercises || appState.activeSession.exercises.length === 0) {
+    appState.activeSession = null;
+    saveActiveSession();
+    workoutActiveScreen.classList.add('hidden');
+    workoutStartScreen.classList.remove('hidden');
+    headerStatus.style.borderColor = 'rgba(0, 242, 254, 0.2)';
+    statusText.textContent = 'Listo';
+    return;
+  }
+
   workoutStartScreen.classList.add('hidden');
   workoutActiveScreen.classList.remove('hidden');
 
@@ -1005,6 +1015,12 @@ function resumeActiveSessionUI() {
 
   btnPauseWorkout.onclick = togglePauseWorkout;
   btnEndWorkout.onclick = confirmEndWorkout;
+
+  const btnFinishBottom = document.getElementById('btnFinishWorkoutBottom');
+  const btnDiscard = document.getElementById('btnDiscardWorkout');
+
+  if (btnFinishBottom) btnFinishBottom.onclick = confirmEndWorkout;
+  if (btnDiscard) btnDiscard.onclick = confirmDiscardWorkout;
 }
 
 function startSessionTimer() {
@@ -1094,7 +1110,7 @@ function renderLiveExercisesCards() {
 
         <!-- Reps Input + Stepper -->
         <div class="set-input-group">
-          <label class="set-input-label" style="margin-bottom: 2px;">Reps (${ex.unit})</label>
+          <label class="set-input-label" style="margin-bottom: 2px;">Reps (${ex.unit || 'reps'})</label>
           <div class="stepper-group">
             <button class="btn-step btn-reps-minus" ${set.completed ? 'disabled' : ''}>-</button>
             <input type="number" inputmode="numeric" pattern="[0-9]*" class="set-input reps-input" value="${set.actualReps}" ${set.completed ? 'disabled' : ''}>
@@ -1222,6 +1238,47 @@ function renderLiveExercisesCards() {
 
     card.appendChild(controlsBar);
   });
+
+  updateWorkoutCompletionBanner();
+}
+
+function updateWorkoutCompletionBanner() {
+  const bannerTitle = document.getElementById('workoutCompletionTitle');
+  const bannerSubtitle = document.getElementById('workoutCompletionSubtitle');
+  if (!bannerTitle || !bannerSubtitle || !appState.activeSession) return;
+
+  let totalSets = 0;
+  let completedSets = 0;
+
+  Object.keys(appState.activeSession.setsData || {}).forEach(exId => {
+    const sets = appState.activeSession.setsData[exId] || [];
+    totalSets += sets.length;
+    completedSets += sets.filter(s => s.completed).length;
+  });
+
+  if (totalSets > 0 && completedSets === totalSets) {
+    bannerTitle.textContent = '🎉 ¡Todas las series completadas!';
+    bannerSubtitle.textContent = `Has finalizado las ${completedSets} series. Presiona "Finalizar y Guardar" para guardar la sesión.`;
+  } else {
+    bannerTitle.textContent = `Progreso: ${completedSets} / ${totalSets} series completadas`;
+    bannerSubtitle.textContent = 'Presiona "Finalizar y Guardar" al terminar para registrar la sesión en tu historial.';
+  }
+}
+
+function confirmDiscardWorkout() {
+  if (!confirm('¿Deseas descartar este entrenamiento sin guardar en tu historial?')) return;
+
+  clearInterval(appState.sessionTimerInterval);
+  clearInterval(appState.restTimer.intervalId);
+  restTimerBanner.classList.add('hidden');
+
+  appState.activeSession = null;
+  saveActiveSession();
+
+  workoutActiveScreen.classList.add('hidden');
+  workoutStartScreen.classList.remove('hidden');
+  headerStatus.style.borderColor = 'rgba(0, 242, 254, 0.2)';
+  statusText.textContent = 'Listo';
 }
 
 // --- Rest Timer Floating Banner Logic ---
