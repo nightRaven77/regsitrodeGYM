@@ -1,10 +1,12 @@
+import hashlib
 import json
 import os
 import sqlite3
-from typing import Dict, Any, Optional, List
-from sqlalchemy.orm import Session
-
 import urllib.parse
+from typing import Dict, Any, Optional, List
+from fastapi import HTTPException
+from sqlalchemy.orm import Session
+from backend.auth import get_password_hash, verify_password, create_access_token
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DB_FILE = os.path.join(BASE_DIR, "gymtracker.db")
@@ -125,6 +127,16 @@ class StorageRepository:
             conn = sqlite3.connect(DB_FILE)
             cursor = conn.cursor()
             cursor.execute("""
+                CREATE TABLE IF NOT EXISTS users (
+                    id TEXT PRIMARY KEY,
+                    email TEXT UNIQUE NOT NULL,
+                    hashed_password TEXT NOT NULL,
+                    name TEXT NOT NULL,
+                    avatar TEXT DEFAULT '👤',
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            """)
+            cursor.execute("""
                 CREATE TABLE IF NOT EXISTS profiles (
                     id TEXT PRIMARY KEY,
                     name TEXT NOT NULL,
@@ -184,6 +196,104 @@ class StorageRepository:
             conn.close()
         except Exception as e:
             print(f"ℹ️ SQLite fallback initialization error: {e}")
+
+    @staticmethod
+    def register_user(email: str, password: str, name: str, avatar: str = "👤", db: Optional[Session] = None, has_supabase: bool = False) -> Dict[str, Any]:
+        """Register user persistently in Supabase PostgreSQL or SQLite fallback DB."""
+        email_clean = email.lower().strip()
+        u_id = "prof_" + hashlib.md5(email_clean.encode('utf-8')).hexdigest()[:10]
+        pwd_hash = get_password_hash(password)
+
+        if has_supabase and db is not None:
+            try:
+                from backend.models import UserModel
+                existing = db.query(UserModel).filter(UserModel.email == email_clean).first()
+                if existing:
+                    raise HTTPException(status_code=400, detail="El correo electrónico ya está registrado.")
+                
+                user = UserModel(
+                    id=u_id,
+                    email=email_clean,
+                    hashed_password=pwd_hash,
+                    name=name,
+                    avatar=avatar
+                )
+                db.add(user)
+                db.commit()
+                db.refresh(user)
+
+                token = create_access_token({"sub": user.id, "email": user.email})
+                return {
+                    "token": token,
+                    "user": {"id": user.id, "name": user.name, "email": user.email, "avatar": user.avatar}
+                }
+            except HTTPException:
+                raise
+            except Exception as e:
+                print(f"⚠️ Error en registro Supabase (Usando SQLite fallback): {e}")
+                db.rollback()
+
+        # SQLite Fallback Persistent Registration
+        try:
+            conn = sqlite3.connect(DB_FILE)
+            cursor = conn.cursor()
+            cursor.execute("SELECT id FROM users WHERE LOWER(email) = ?", (email_clean,))
+            if cursor.fetchone():
+                conn.close()
+                raise HTTPException(status_code=400, detail="El correo electrónico ya está registrado.")
+
+            cursor.execute("INSERT INTO users (id, email, hashed_password, name, avatar) VALUES (?, ?, ?, ?, ?)",
+                           (u_id, email_clean, pwd_hash, name, avatar))
+            cursor.execute("INSERT OR REPLACE INTO profiles (id, name, avatar) VALUES (?, ?, ?)", (u_id, name, avatar))
+            conn.commit()
+            conn.close()
+        except HTTPException:
+            raise
+        except Exception as e:
+            print(f"ℹ️ SQLite register error: {e}")
+
+        token = create_access_token({"sub": u_id, "email": email_clean})
+        return {
+            "token": token,
+            "user": {"id": u_id, "name": name, "email": email_clean, "avatar": avatar}
+        }
+
+    @staticmethod
+    def authenticate_user(email: str, password: str, db: Optional[Session] = None, has_supabase: bool = False) -> Dict[str, Any]:
+        """Authenticate user persistently against Supabase PostgreSQL or SQLite fallback DB."""
+        email_clean = email.lower().strip()
+
+        if has_supabase and db is not None:
+            try:
+                from backend.models import UserModel
+                user = db.query(UserModel).filter(UserModel.email == email_clean).first()
+                if user and verify_password(password, user.hashed_password):
+                    token = create_access_token({"sub": user.id, "email": user.email})
+                    return {
+                        "token": token,
+                        "user": {"id": user.id, "name": user.name, "email": user.email, "avatar": user.avatar}
+                    }
+            except Exception as e:
+                print(f"⚠️ Error auth Supabase (Usando SQLite fallback): {e}")
+
+        # SQLite Fallback Persistent Login
+        try:
+            conn = sqlite3.connect(DB_FILE)
+            cursor = conn.cursor()
+            cursor.execute("SELECT id, email, hashed_password, name, avatar FROM users WHERE LOWER(email) = ?", (email_clean,))
+            row = cursor.fetchone()
+            conn.close()
+
+            if row and verify_password(password, row[2]):
+                token = create_access_token({"sub": row[0], "email": row[1]})
+                return {
+                    "token": token,
+                    "user": {"id": row[0], "name": row[3], "email": row[1], "avatar": row[4]}
+                }
+        except Exception as e:
+            print(f"ℹ️ SQLite login error: {e}")
+
+        raise HTTPException(status_code=401, detail="Correo o contraseña incorrectos.")
 
     @staticmethod
     def get_exercises(db: Optional[Session] = None, has_supabase: bool = False) -> List[Dict[str, Any]]:

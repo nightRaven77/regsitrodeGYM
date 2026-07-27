@@ -88,67 +88,23 @@ def create_or_update_exercise(payload: ExerciseCreateSchema, db: Any = Depends(g
 # --- Auth Endpoints ---
 @app.post("/api/auth/register")
 def register_user(payload: UserRegisterSchema, db: Any = Depends(get_db)):
-    try:
-        if not HAS_SUPABASE or db is None:
-            u_id = "user_" + str(int(os.urandom(4).hex(), 16))
-            token = create_access_token({"sub": u_id, "email": payload.email})
-            return {
-                "token": token,
-                "user": {"id": u_id, "name": payload.name, "email": payload.email, "avatar": payload.avatar}
-            }
-        
-        existing = db.query(UserModel).filter(UserModel.email == payload.email).first()
-        if existing:
-            raise HTTPException(status_code=400, detail="El correo electrónico ya está registrado.")
-
-        u_id = "prof_" + str(int(os.urandom(4).hex(), 16))
-        user = UserModel(
-            id=u_id,
-            email=payload.email,
-            hashed_password=get_password_hash(payload.password),
-            name=payload.name,
-            avatar=payload.avatar
-        )
-        db.add(user)
-        db.commit()
-        db.refresh(user)
-
-        token = create_access_token({"sub": user.id, "email": user.email})
-        return {
-            "token": token,
-            "user": {"id": user.id, "name": user.name, "email": user.email, "avatar": user.avatar}
-        }
-    except HTTPException:
-        raise
-    except Exception as e:
-        print(f"❌ Error en register_user: {e}")
-        raise HTTPException(status_code=400, detail=f"Error en registro: {str(e)}")
+    return StorageRepository.register_user(
+        email=payload.email,
+        password=payload.password,
+        name=payload.name,
+        avatar=payload.avatar,
+        db=db,
+        has_supabase=HAS_SUPABASE
+    )
 
 @app.post("/api/auth/login")
 def login_user(payload: UserLoginSchema, db: Any = Depends(get_db)):
-    try:
-        if not HAS_SUPABASE or db is None:
-            u_id = "prof_" + str(int(os.urandom(4).hex(), 16))
-            token = create_access_token({"sub": u_id, "email": payload.email})
-            return {
-                "token": token,
-                "user": {"id": u_id, "name": payload.email.split("@")[0], "email": payload.email, "avatar": "👤"}
-            }
-
-        user = db.query(UserModel).filter(UserModel.email == payload.email).first()
-        if not user or not verify_password(payload.password, user.hashed_password):
-            raise HTTPException(status_code=401, detail="Correo o contraseña incorrectos.")
-
-        token = create_access_token({"sub": user.id, "email": user.email})
-        return {
-            "token": token,
-            "user": {"id": user.id, "name": user.name, "email": user.email, "avatar": user.avatar}
-        }
-    except HTTPException:
-        raise
-    except Exception as e:
-        print(f"❌ Error en login_user: {e}")
-        raise HTTPException(status_code=400, detail=f"Error en inicio de sesión: {str(e)}")
+    return StorageRepository.authenticate_user(
+        email=payload.email,
+        password=payload.password,
+        db=db,
+        has_supabase=HAS_SUPABASE
+    )
 
 @app.get("/api/health")
 def health_check():

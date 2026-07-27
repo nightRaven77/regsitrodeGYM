@@ -70,18 +70,46 @@ function loadStorageData() {
   // 1. Profiles
   const savedProfiles = localStorage.getItem(STORAGE_KEYS.PROFILES);
   if (savedProfiles) {
-    appState.profiles = JSON.parse(savedProfiles);
+    try {
+      appState.profiles = JSON.parse(savedProfiles);
+    } catch (e) {
+      appState.profiles = DEFAULT_PROFILES;
+    }
   } else {
     appState.profiles = DEFAULT_PROFILES;
     localStorage.setItem(STORAGE_KEYS.PROFILES, JSON.stringify(appState.profiles));
   }
 
-  const savedActiveProfileId = localStorage.getItem(STORAGE_KEYS.ACTIVE_PROFILE_ID);
-  if (savedActiveProfileId && appState.profiles.some(p => p.id === savedActiveProfileId)) {
-    appState.activeProfileId = savedActiveProfileId;
+  // 2. Check for logged in user account session persistence
+  const savedUserJson = localStorage.getItem(STORAGE_KEYS.USER_ACCOUNT);
+  const jwtToken = localStorage.getItem(STORAGE_KEYS.JWT_TOKEN);
+
+  if (savedUserJson && jwtToken) {
+    try {
+      const user = JSON.parse(savedUserJson);
+      const userProfile = {
+        id: user.id,
+        name: user.name || 'Usuario',
+        avatar: user.avatar || '👤'
+      };
+
+      if (!appState.profiles.some(p => p.id === userProfile.id)) {
+        appState.profiles.push(userProfile);
+        localStorage.setItem(STORAGE_KEYS.PROFILES, JSON.stringify(appState.profiles));
+      }
+      appState.activeProfileId = userProfile.id;
+      localStorage.setItem(STORAGE_KEYS.ACTIVE_PROFILE_ID, userProfile.id);
+    } catch (e) {
+      console.error('Error cargando datos de cuenta guardada:', e);
+    }
   } else {
-    appState.activeProfileId = appState.profiles[0].id;
-    localStorage.setItem(STORAGE_KEYS.ACTIVE_PROFILE_ID, appState.activeProfileId);
+    const savedActiveProfileId = localStorage.getItem(STORAGE_KEYS.ACTIVE_PROFILE_ID);
+    if (savedActiveProfileId && appState.profiles.some(p => p.id === savedActiveProfileId)) {
+      appState.activeProfileId = savedActiveProfileId;
+    } else {
+      appState.activeProfileId = appState.profiles[0].id;
+      localStorage.setItem(STORAGE_KEYS.ACTIVE_PROFILE_ID, appState.activeProfileId);
+    }
   }
 
   loadActiveProfileData();
@@ -90,13 +118,16 @@ function loadStorageData() {
 function loadActiveProfileData() {
   const pId = appState.activeProfileId;
 
-  // 1. Fast load from LocalStorage for instant UI response (Start from 0 default routines)
+  // 1. Fast load from LocalStorage for instant UI response
   const savedRoutines = localStorage.getItem(STORAGE_KEYS.routines(pId));
   if (savedRoutines) {
-    appState.routines = JSON.parse(savedRoutines);
+    try {
+      appState.routines = JSON.parse(savedRoutines);
+    } catch (e) {
+      appState.routines = [];
+    }
   } else {
     appState.routines = [];
-    localStorage.setItem(STORAGE_KEYS.routines(pId), JSON.stringify(appState.routines));
   }
 
   const savedActiveRoutineId = localStorage.getItem(STORAGE_KEYS.activeRoutineId(pId));
@@ -126,7 +157,7 @@ async function fetchCloudState(pId) {
       const data = await res.json();
       let updated = false;
 
-      if (data.routines && data.routines.length > 0) {
+      if (data.routines !== undefined && data.routines !== null) {
         appState.routines = data.routines;
         localStorage.setItem(STORAGE_KEYS.routines(pId), JSON.stringify(appState.routines));
         updated = true;
@@ -141,13 +172,22 @@ async function fetchCloudState(pId) {
         localStorage.setItem(STORAGE_KEYS.workoutHistory(pId), JSON.stringify(appState.workoutHistory));
         updated = true;
       }
+      if (data.activeSession !== undefined) {
+        appState.activeSession = data.activeSession;
+        if (data.activeSession) {
+          localStorage.setItem(STORAGE_KEYS.activeSession(pId), JSON.stringify(appState.activeSession));
+        } else {
+          localStorage.removeItem(STORAGE_KEYS.activeSession(pId));
+        }
+        updated = true;
+      }
 
       if (updated) {
         refreshCurrentProfileUI();
       }
     }
   } catch (e) {
-    // Offline mode
+    console.warn('⚠️ Cloud fetch error:', e);
   }
 }
 
@@ -705,6 +745,7 @@ function setupAuthHandlers() {
             if (!appState.profiles.some(p => p.id === userProfile.id)) {
               appState.profiles.push(userProfile);
             }
+            saveProfiles();
             switchProfile(userProfile.id);
           }
 
@@ -1344,7 +1385,8 @@ function renderCatalog(category = 'ALL', searchQuery = '') {
 
   filtered.forEach(ex => {
     const icon = categoryIcons[ex.category] || '🏋️';
-    const lastHistory = appState.weightsHistory[ex.id];
+    const lastHistory = appState.weightsHistory ? appState.weightsHistory[ex.id] : null;
+    const lastWeightStr = (lastHistory && lastHistory.weight !== undefined) ? `${lastHistory.weight} ${lastHistory.unit || 'kg'}` : 'Sin registro de peso';
     const rawMwUrl = ex.musclewikiUrl || '';
     const mwUrl = (rawMwUrl.startsWith('http') && !rawMwUrl.includes('musclewiki.com/search') && !rawMwUrl.includes('exercises/male'))
       ? rawMwUrl
