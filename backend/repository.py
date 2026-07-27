@@ -514,8 +514,7 @@ class StorageRepository:
                     p_data.weights_json = weights_str
                 if payload.workoutHistory is not None:
                     p_data.history_json = history_str
-                if payload.activeSession is not None:
-                    p_data.active_session_json = active_str
+                p_data.active_session_json = active_str
 
                 if payload.workoutHistory:
                     for w in payload.workoutHistory:
