@@ -10,11 +10,11 @@ BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DB_FILE = os.path.join(BASE_DIR, "gymtracker.db")
 
 def get_musclewiki_url(name: str, category: str) -> str:
-    """Generate reliable MuscleWiki URL (Search query or Category directory) that never 404s."""
+    """Generate 100% working MuscleWiki search link via Google site search or direct directory."""
     if name:
-        query = urllib.parse.quote_plus(name)
-        return f"https://musclewiki.com/search?q={query}"
-    return "https://musclewiki.com/directory"
+        query = urllib.parse.quote_plus(f"site:musclewiki.com {name}")
+        return f"https://www.google.com/search?q={query}"
+    return "https://musclewiki.com/"
 
 INITIAL_CATALOG_SEED = [
   # --- PIERNA ---

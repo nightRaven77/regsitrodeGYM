@@ -1345,8 +1345,10 @@ function renderCatalog(category = 'ALL', searchQuery = '') {
   filtered.forEach(ex => {
     const icon = categoryIcons[ex.category] || '🏋️';
     const lastHistory = appState.weightsHistory[ex.id];
-    const lastWeightStr = lastHistory ? `${lastHistory.weight} ${lastHistory.unit || 'kg'}` : 'Sin registro de peso';
-    const mwUrl = ex.musclewikiUrl || `https://musclewiki.com/search?q=${encodeURIComponent(ex.name)}`;
+    const rawMwUrl = ex.musclewikiUrl || '';
+    const mwUrl = (rawMwUrl.startsWith('http') && !rawMwUrl.includes('musclewiki.com/search') && !rawMwUrl.includes('exercises/male'))
+      ? rawMwUrl
+      : `https://www.google.com/search?q=${encodeURIComponent('site:musclewiki.com ' + ex.name)}`;
     const equipment = ex.equipment || 'General';
 
     const card = document.createElement('div');
