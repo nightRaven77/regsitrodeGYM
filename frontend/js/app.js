@@ -19,6 +19,28 @@ let appState = {
   sessionTimerInterval: null
 };
 
+const DEFAULT_ROUTINES = [
+  {
+    id: 'rot_hypertrophy_4d',
+    name: 'Hipertrofia 4 Días (CenterFit)',
+    days: [
+      { dayName: 'Día 1: Pecho y Tríceps', exerciseIds: ['c5', 'c4', 'c6', 'tr7', 'tr3'] },
+      { dayName: 'Día 2: Espalda y Bíceps', exerciseIds: ['b2', 'b4', 'b5', 'bi3', 'bi1'] },
+      { dayName: 'Día 3: Pierna Completa', exerciseIds: ['p4', 'p2', 'p1', 'p7', 'p10'] },
+      { dayName: 'Día 4: Hombro y Abdomen', exerciseIds: ['s3', 's5', 's8', 'ab2', 'ab1'] }
+    ]
+  },
+  {
+    id: 'rot_torso_pierna_3d',
+    name: 'Torso / Pierna 3 Días',
+    days: [
+      { dayName: 'Día 1: Torso Enfoque Empuje', exerciseIds: ['c5', 'c7', 's3', 'tr7'] },
+      { dayName: 'Día 2: Pierna y Core', exerciseIds: ['p5', 'p4', 'p2', 'ab10'] },
+      { dayName: 'Día 3: Torso Enfoque Jalón', exerciseIds: ['b2', 'b7', 's5', 'bi3'] }
+    ]
+  }
+];
+
 // Central App Configuration Constants
 const CONFIG = {
   DEFAULT_REST_SECONDS: 60,
@@ -1626,15 +1648,6 @@ function openEditHistoryModal(record) {
       }).catch(() => {});
     }
   };
-}
-
-  if (totalSets > 0 && completedSets === totalSets) {
-    bannerTitle.textContent = '🎉 ¡Todas las series completadas!';
-    bannerSubtitle.textContent = `Has finalizado las ${completedSets} series. Presiona "Finalizar y Guardar" para guardar la sesión.`;
-  } else {
-    bannerTitle.textContent = `Progreso: ${completedSets} / ${totalSets} series completadas`;
-    bannerSubtitle.textContent = 'Presiona "Finalizar y Guardar" al terminar para registrar la sesión en tu historial.';
-  }
 }
 
 function confirmDiscardWorkout() {

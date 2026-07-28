@@ -95,3 +95,25 @@ const DEFAULT_EXERCISES_CATALOG = [
   { id: 'ab9', category: 'Abdomen', name: 'Crunch en Máquina', defaultSets: 1, defaultReps: 20, unit: 'reps' },
   { id: 'ab10', category: 'Abdomen', name: 'Abcoaster', defaultSets: 1, defaultReps: 20, unit: 'reps' }
 ];
+
+const DEFAULT_ROUTINES = [
+  {
+    id: 'rot_hypertrophy_4d',
+    name: 'Hipertrofia 4 Días (CenterFit)',
+    days: [
+      { dayName: 'Día 1: Pecho y Tríceps', exerciseIds: ['c5', 'c4', 'c6', 'tr7', 'tr3'] },
+      { dayName: 'Día 2: Espalda y Bíceps', exerciseIds: ['b2', 'b4', 'b5', 'bi3', 'bi1'] },
+      { dayName: 'Día 3: Pierna Completa', exerciseIds: ['p4', 'p2', 'p1', 'p7', 'p10'] },
+      { dayName: 'Día 4: Hombro y Abdomen', exerciseIds: ['s3', 's5', 's8', 'ab2', 'ab1'] }
+    ]
+  },
+  {
+    id: 'rot_torso_pierna_3d',
+    name: 'Torso / Pierna 3 Días',
+    days: [
+      { dayName: 'Día 1: Torso Enfoque Empuje', exerciseIds: ['c5', 'c7', 's3', 'tr7'] },
+      { dayName: 'Día 2: Pierna y Core', exerciseIds: ['p5', 'p4', 'p2', 'ab10'] },
+      { dayName: 'Día 3: Torso Enfoque Jalón', exerciseIds: ['b2', 'b7', 's5', 'bi3'] }
+    ]
+  }
+];
