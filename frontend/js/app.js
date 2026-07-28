@@ -322,9 +322,48 @@ document.addEventListener('DOMContentLoaded', () => {
   setupNavigation();
   refreshCurrentProfileUI();
 
-  // Register Service Worker for PWA Offline mode
+  // Register Service Worker for PWA Offline mode with Instant Auto-Update Detection
   if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('sw.js').catch(err => console.log('SW registration failed:', err));
+    let refreshing = false;
+
+    // Reload page automatically when new service worker takes control
+    navigator.serviceWorker.addEventListener('controllerchange', () => {
+      if (!refreshing) {
+        refreshing = true;
+        window.location.reload();
+      }
+    });
+
+    navigator.serviceWorker.register('sw.js').then(reg => {
+      // Force update check on app open / regain focus
+      reg.update();
+
+      const showUpdateToast = (worker) => {
+        const toast = document.getElementById('pwaUpdateToast');
+        const btnReload = document.getElementById('btnReloadPWA');
+        if (toast && btnReload) {
+          toast.classList.remove('hidden');
+          btnReload.onclick = () => {
+            worker.postMessage({ type: 'SKIP_WAITING', action: 'skipWaiting' });
+          };
+        }
+      };
+
+      reg.addEventListener('updatefound', () => {
+        const newWorker = reg.installing;
+        if (newWorker) {
+          newWorker.addEventListener('statechange', () => {
+            if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+              showUpdateToast(newWorker);
+            }
+          });
+        }
+      });
+
+      if (reg.waiting && navigator.serviceWorker.controller) {
+        showUpdateToast(reg.waiting);
+      }
+    }).catch(err => console.log('SW registration failed:', err));
   }
 
   // Auto-sync offline changes to Supabase when network is restored

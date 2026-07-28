@@ -1577,6 +1577,16 @@ body {
     </div>
   </div>
 
+  <!-- =================================================================== -->
+  <!-- TOAST: Notificación de Nueva Versión Disponible (Auto PWA Update) -->
+  <!-- =================================================================== -->
+  <div id="pwaUpdateToast" class="hidden" style="position: fixed; top: 16px; left: 50%; transform: translateX(-50%); z-index: 9999; background: linear-gradient(135deg, #00f2fe, #4facfe); color: #000; padding: 12px 20px; border-radius: 30px; box-shadow: 0 8px 32px rgba(0, 242, 254, 0.4); display: flex; align-items: center; gap: 12px; font-size: 13px; font-weight: 700;">
+    <span>🚀 Nueva versión de CenterFit disponible</span>
+    <button id="btnReloadPWA" class="btn btn-sm" style="background: #000; color: #fff; border: none; border-radius: 20px; padding: 4px 12px; font-weight: 700; cursor: pointer;">
+      Actualizar Ahora
+    </button>
+  </div>
+
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="js/exercises_data.js"></script>
   <script src="js/analytics.js"></script>

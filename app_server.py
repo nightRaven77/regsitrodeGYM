@@ -1,9 +1,10 @@
 import os
 import json
 from typing import Optional, List, Dict, Any
-from fastapi import FastAPI, HTTPException, Depends, status
+from fastapi import FastAPI, HTTPException, Depends
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
 from pydantic import BaseModel
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -129,6 +130,18 @@ def get_profile_state(profile_id: str, db: Any = Depends(get_db)):
 @app.post("/api/sync/{profile_id}")
 def sync_profile_state(profile_id: str, payload: SyncPayload, db: Any = Depends(get_db)):
     return StorageRepository.sync_state(profile_id, payload=payload, db=db, has_supabase=HAS_SUPABASE)
+
+# Serve sw.js with no-cache headers for instant PWA update detection
+@app.get("/sw.js")
+def get_service_worker():
+    sw_file = os.path.join(BASE_DIR, "frontend", "sw.js")
+    if os.path.exists(sw_file):
+        return FileResponse(sw_file, media_type="application/javascript", headers={
+            "Cache-Control": "no-cache, no-store, must-revalidate",
+            "Pragma": "no-cache",
+            "Expires": "0"
+        })
+    raise HTTPException(status_code=404, detail="sw.js no encontrado")
 
 # Mount static frontend files for production serving
 frontend_path = os.path.join(BASE_DIR, "frontend")
