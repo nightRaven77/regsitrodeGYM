@@ -19,28 +19,6 @@ let appState = {
   sessionTimerInterval: null
 };
 
-const DEFAULT_ROUTINES = [
-  {
-    id: 'rot_hypertrophy_4d',
-    name: 'Hipertrofia 4 Días (CenterFit)',
-    days: [
-      { dayName: 'Día 1: Pecho y Tríceps', exerciseIds: ['c5', 'c4', 'c6', 'tr7', 'tr3'] },
-      { dayName: 'Día 2: Espalda y Bíceps', exerciseIds: ['b2', 'b4', 'b5', 'bi3', 'bi1'] },
-      { dayName: 'Día 3: Pierna Completa', exerciseIds: ['p4', 'p2', 'p1', 'p7', 'p10'] },
-      { dayName: 'Día 4: Hombro y Abdomen', exerciseIds: ['s3', 's5', 's8', 'ab2', 'ab1'] }
-    ]
-  },
-  {
-    id: 'rot_torso_pierna_3d',
-    name: 'Torso / Pierna 3 Días',
-    days: [
-      { dayName: 'Día 1: Torso Enfoque Empuje', exerciseIds: ['c5', 'c7', 's3', 'tr7'] },
-      { dayName: 'Día 2: Pierna y Core', exerciseIds: ['p5', 'p4', 'p2', 'ab10'] },
-      { dayName: 'Día 3: Torso Enfoque Jalón', exerciseIds: ['b2', 'b7', 's5', 'bi3'] }
-    ]
-  }
-];
-
 // Central App Configuration Constants
 const CONFIG = {
   DEFAULT_REST_SECONDS: 60,
@@ -145,12 +123,12 @@ function loadActiveProfileData() {
   if (savedRoutines) {
     try {
       const parsed = JSON.parse(savedRoutines);
-      appState.routines = (Array.isArray(parsed) && parsed.length > 0) ? parsed : JSON.parse(JSON.stringify(DEFAULT_ROUTINES));
+      appState.routines = Array.isArray(parsed) ? parsed : [];
     } catch (e) {
-      appState.routines = JSON.parse(JSON.stringify(DEFAULT_ROUTINES));
+      appState.routines = [];
     }
   } else {
-    appState.routines = JSON.parse(JSON.stringify(DEFAULT_ROUTINES));
+    appState.routines = [];
   }
 
   const savedActiveRoutineId = localStorage.getItem(STORAGE_KEYS.activeRoutineId(pId));
@@ -180,12 +158,8 @@ async function fetchCloudState(pId) {
       const data = await res.json();
       let updated = false;
 
-      if (data.routines !== undefined && data.routines !== null && data.routines.length > 0) {
+      if (data.routines !== undefined && data.routines !== null) {
         appState.routines = data.routines;
-        localStorage.setItem(STORAGE_KEYS.routines(pId), JSON.stringify(appState.routines));
-        updated = true;
-      } else if (!appState.routines || appState.routines.length === 0) {
-        appState.routines = JSON.parse(JSON.stringify(DEFAULT_ROUTINES));
         localStorage.setItem(STORAGE_KEYS.routines(pId), JSON.stringify(appState.routines));
         updated = true;
       }
@@ -929,30 +903,36 @@ function setupNavigation() {
 function setupRoutineDropdowns() {
   routineSelect.innerHTML = '';
   if (!appState.routines || appState.routines.length === 0) {
-    appState.routines = JSON.parse(JSON.stringify(DEFAULT_ROUTINES));
-  }
-  appState.routines.forEach(routine => {
     const option = document.createElement('option');
-    option.value = routine.id;
-    option.textContent = routine.name;
-    if (routine.id === appState.activeRoutineId) option.selected = true;
+    option.value = '';
+    option.textContent = '(Sin rutinas creadas)';
     routineSelect.appendChild(option);
-  });
+    appState.activeRoutineId = null;
+  } else {
+    appState.routines.forEach(routine => {
+      const option = document.createElement('option');
+      option.value = routine.id;
+      option.textContent = routine.name;
+      if (routine.id === appState.activeRoutineId) option.selected = true;
+      routineSelect.appendChild(option);
+    });
 
-  if (!appState.activeRoutineId && appState.routines.length > 0) {
-    appState.activeRoutineId = appState.routines[0].id;
+    if (!appState.activeRoutineId && appState.routines.length > 0) {
+      appState.activeRoutineId = appState.routines[0].id;
+    }
   }
 
   updateDayDropdown();
 
   routineSelect.addEventListener('change', (e) => {
     appState.activeRoutineId = e.target.value;
-    localStorage.setItem('gym_active_routine_id', appState.activeRoutineId);
+    const pId = appState.activeProfileId;
+    if (pId) localStorage.setItem(STORAGE_KEYS.activeRoutineId(pId), appState.activeRoutineId);
     updateDayDropdown();
   });
 
   daySelect.addEventListener('change', (e) => {
-    appState.activeDayIndex = parseInt(e.target.value, 10);
+    appState.activeDayIndex = parseInt(e.target.value, 10) || 0;
     renderTodayExercisesPreview();
   });
 
@@ -960,16 +940,21 @@ function setupRoutineDropdowns() {
 }
 
 function updateDayDropdown() {
-  const activeRoutine = appState.routines.find(r => r.id === appState.activeRoutineId) || appState.routines[0];
+  const activeRoutine = appState.routines ? appState.routines.find(r => r.id === appState.activeRoutineId) : null;
   daySelect.innerHTML = '';
 
-  if (activeRoutine && activeRoutine.days) {
+  if (activeRoutine && activeRoutine.days && activeRoutine.days.length > 0) {
     activeRoutine.days.forEach((day, idx) => {
       const option = document.createElement('option');
       option.value = idx;
       option.textContent = day.dayName;
       daySelect.appendChild(option);
     });
+  } else {
+    const option = document.createElement('option');
+    option.value = '';
+    option.textContent = '(Sin días asignados)';
+    daySelect.appendChild(option);
   }
 
   appState.activeDayIndex = 0;
@@ -977,20 +962,25 @@ function updateDayDropdown() {
 }
 
 function renderTodayExercisesPreview() {
-  const activeRoutine = appState.routines.find(r => r.id === appState.activeRoutineId) || appState.routines[0];
+  const activeRoutine = appState.routines ? appState.routines.find(r => r.id === appState.activeRoutineId) : null;
   if (!activeRoutine || !activeRoutine.days || !activeRoutine.days[appState.activeDayIndex]) {
-    todayExercisesList.innerHTML = '<div style="color: var(--text-muted);">Sin ejercicios asignados</div>';
+    todayExercisesList.innerHTML = '<div style="color: var(--text-muted); text-align: center; padding: 16px;">Aún no tienes rutinas creadas.<br><br><button class="btn btn-outline btn-sm" onclick="document.querySelector(\'[data-tab=tab-routines]\').click();" style="margin-top: 6px;">➕ Crear mi primera rutina</button></div>';
     todayExerciseCount.textContent = '0 ejercicios';
     return;
   }
 
   const currentDay = activeRoutine.days[appState.activeDayIndex];
-  const exercises = currentDay.exerciseIds
+  const exercises = (currentDay.exerciseIds || [])
     .map(id => DEFAULT_EXERCISES_CATALOG.find(ex => ex.id === id))
     .filter(Boolean);
 
   todayExerciseCount.textContent = `${exercises.length} ejercicios`;
   todayExercisesList.innerHTML = '';
+
+  if (exercises.length === 0) {
+    todayExercisesList.innerHTML = '<div style="color: var(--text-muted); text-align: center; padding: 12px;">Sin ejercicios asignados a este día</div>';
+    return;
+  }
 
   exercises.forEach(ex => {
     const item = document.createElement('div');
@@ -1014,11 +1004,11 @@ function renderTodayExercisesPreview() {
 
 // --- Live Workout Session Management ---
 function startNewWorkoutSession() {
-  const activeRoutine = appState.routines.find(r => r.id === appState.activeRoutineId) || appState.routines[0];
-  const currentDay = activeRoutine.days[appState.activeDayIndex];
+  const activeRoutine = appState.routines ? appState.routines.find(r => r.id === appState.activeRoutineId) : null;
+  const currentDay = (activeRoutine && activeRoutine.days) ? activeRoutine.days[appState.activeDayIndex] : null;
 
   if (!currentDay || !currentDay.exerciseIds || currentDay.exerciseIds.length === 0) {
-    alert('Por favor selecciona un día con ejercicios asignados.');
+    alert('No tienes ejercicios programados para este día. Por favor crea una rutina en la pestaña Rutinas.');
     return;
   }
 
