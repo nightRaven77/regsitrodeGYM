@@ -511,6 +511,67 @@
     </div>
   </div>
 
+  <!-- =================================================================== -->
+  <!-- MODAL: Cambiar Ejercicio en Entrenamiento Activo -->
+  <!-- =================================================================== -->
+  <div id="swapExerciseModal" class="modal-overlay hidden">
+    <div class="modal-card card" style="max-width: 480px; width: 92%;">
+      <div class="card-title">
+        <span>🔄 Cambiar Ejercicio</span>
+        <button id="btnCloseSwapModal" class="btn btn-secondary btn-sm">✕</button>
+      </div>
+      <p style="font-size: 12px; color: var(--text-muted); margin-bottom: 12px;">
+        Selecciona un nuevo ejercicio del catálogo para reemplazar el actual en tu sesión.
+      </p>
+
+      <input type="text" id="swapSearchInput" class="form-control mb-2" placeholder="Buscar ejercicio sustituto...">
+
+      <div id="swapExerciseListContainer" style="max-height: 320px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px;">
+        <!-- Populated via JS -->
+      </div>
+    </div>
+  </div>
+
+  <!-- =================================================================== -->
+  <!-- MODAL: Editar Registro de Historial -->
+  <!-- =================================================================== -->
+  <div id="editHistoryModal" class="modal-overlay hidden">
+    <div class="modal-card card" style="max-width: 500px; width: 92%;">
+      <div class="card-title">
+        <span>✏️ Editar Entrenamiento Guardado</span>
+        <button id="btnCloseEditHistoryModal" class="btn btn-secondary btn-sm">✕</button>
+      </div>
+      <div id="editHistoryFormContent" style="display: flex; flex-direction: column; gap: 12px; max-height: 400px; overflow-y: auto; margin-top: 10px;">
+        <!-- Populated via JS -->
+      </div>
+      <button id="btnSaveEditHistory" class="btn btn-primary btn-lg mt-3" style="width: 100%;">
+        💾 Guardar Cambios en Historial
+      </button>
+    </div>
+  </div>
+
+  <!-- =================================================================== -->
+  <!-- MODAL: Temporizador de Ejercicio por Tiempo -->
+  <!-- =================================================================== -->
+  <div id="exerciseTimerModal" class="modal-overlay hidden">
+    <div class="modal-card card" style="max-width: 360px; width: 88%; text-align: center;">
+      <div class="card-title" style="justify-content: center;">
+        <span id="exTimerModalTitle">⏱️ Temporizador de Ejercicio</span>
+      </div>
+      <div id="exTimerDisplay" style="font-size: 48px; font-weight: 900; color: var(--accent-cyan); margin: 16px 0; letter-spacing: 2px;">00:45</div>
+      <div style="display: flex; gap: 8px; justify-content: center; margin-bottom: 12px;">
+        <button id="btnExTimerSub10" class="btn btn-secondary btn-sm">-10s</button>
+        <button id="btnExTimerAdd10" class="btn btn-secondary btn-sm">+10s</button>
+      </div>
+      <div style="display: flex; gap: 10px;">
+        <button id="btnExTimerClose" class="btn btn-secondary btn-sm" style="flex: 1;">Cerrar</button>
+        <button id="btnExTimerToggle" class="btn btn-primary btn-lg" style="flex: 2; font-weight: 800; background: linear-gradient(135deg, var(--accent-green), #00b0ff); border: none; color: #000;">
+          ▶ Iniciar
+        </button>
+      </div>
+    </div>
+  </div>
+
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="js/exercises_data.js"></script>
   <script src="js/analytics.js"></script>

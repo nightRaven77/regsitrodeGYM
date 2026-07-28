@@ -79,6 +79,10 @@ def update_user_profile(user_id: str, payload: UserProfileUpdateSchema, db: Any 
 def delete_workout_history_log(profile_id: str, log_id: str, db: Any = Depends(get_db)):
     return StorageRepository.delete_workout_log(profile_id, log_id, db=db, has_supabase=HAS_SUPABASE)
 
+@app.put("/api/history/{profile_id}/{log_id}")
+def update_workout_history_log(profile_id: str, log_id: str, payload: Dict[str, Any], db: Any = Depends(get_db)):
+    return StorageRepository.update_workout_log(profile_id, log_id, payload, db=db, has_supabase=HAS_SUPABASE)
+
 # --- Exercise Catalog Endpoints ---
 @app.get("/api/exercises")
 def get_exercise_catalog(db: Any = Depends(get_db)):

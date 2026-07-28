@@ -591,6 +591,49 @@ class StorageRepository:
         return {"status": "deleted", "id": log_id}
 
     @staticmethod
+    def update_workout_log(profile_id: str, log_id: str, updated_record: Dict[str, Any], db: Optional[Session] = None, has_supabase: bool = False) -> Dict[str, Any]:
+        """Update a workout log entry in Supabase PostgreSQL and SQLite fallback DB."""
+        if has_supabase and db is not None:
+            try:
+                from backend.models import WorkoutLogModel, ProfileDataModel
+                w_model = db.query(WorkoutLogModel).filter(WorkoutLogModel.id == log_id, WorkoutLogModel.user_id == profile_id).first()
+                if w_model:
+                    w_model.day_name = updated_record.get('dayName', w_model.day_name)
+                    w_model.date_formatted = updated_record.get('dateFormatted', w_model.date_formatted)
+                    w_model.time_formatted = updated_record.get('timeFormatted', w_model.time_formatted)
+                    w_model.duration_seconds = updated_record.get('durationSeconds', w_model.duration_seconds)
+                    w_model.total_sets = updated_record.get('totalSets', w_model.total_sets)
+                    w_model.total_volume_kg = updated_record.get('totalVolumeKg', w_model.total_volume_kg)
+                    w_model.detailed_exercises = updated_record.get('detailedExercises', w_model.detailed_exercises)
+
+                p_data = db.query(ProfileDataModel).filter(ProfileDataModel.profile_id == profile_id).first()
+                if p_data and p_data.history_json:
+                    history = json.loads(p_data.history_json)
+                    updated_history = [updated_record if (isinstance(h, dict) and h.get('id') == log_id) else h for h in history]
+                    p_data.history_json = json.dumps(updated_history)
+
+                db.commit()
+            except Exception as e:
+                print(f"⚠️ Error actualizando historial en Supabase: {e}")
+                db.rollback()
+
+        try:
+            conn = sqlite3.connect(DB_FILE)
+            cursor = conn.cursor()
+            cursor.execute("SELECT history_json FROM profile_data WHERE profile_id = ?", (profile_id,))
+            row = cursor.fetchone()
+            if row and row[0]:
+                history = json.loads(row[0])
+                updated_history = [updated_record if (isinstance(h, dict) and h.get('id') == log_id) else h for h in history]
+                cursor.execute("UPDATE profile_data SET history_json = ? WHERE profile_id = ?", (json.dumps(updated_history), profile_id))
+                conn.commit()
+            conn.close()
+        except Exception as e:
+            print(f"ℹ️ SQLite update history error: {e}")
+
+        return {"status": "updated", "id": log_id, "record": updated_record}
+
+    @staticmethod
     def update_user_profile(user_id: str, name: Optional[str] = None, avatar: Optional[str] = None, db: Optional[Session] = None, has_supabase: bool = False) -> Dict[str, Any]:
         """Update user profile name and/or avatar in Supabase and SQLite fallback."""
         updated_user = {"id": user_id}

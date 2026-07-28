@@ -122,12 +122,13 @@ function loadActiveProfileData() {
   const savedRoutines = localStorage.getItem(STORAGE_KEYS.routines(pId));
   if (savedRoutines) {
     try {
-      appState.routines = JSON.parse(savedRoutines);
+      const parsed = JSON.parse(savedRoutines);
+      appState.routines = (Array.isArray(parsed) && parsed.length > 0) ? parsed : JSON.parse(JSON.stringify(DEFAULT_ROUTINES));
     } catch (e) {
-      appState.routines = [];
+      appState.routines = JSON.parse(JSON.stringify(DEFAULT_ROUTINES));
     }
   } else {
-    appState.routines = [];
+    appState.routines = JSON.parse(JSON.stringify(DEFAULT_ROUTINES));
   }
 
   const savedActiveRoutineId = localStorage.getItem(STORAGE_KEYS.activeRoutineId(pId));
@@ -157,8 +158,12 @@ async function fetchCloudState(pId) {
       const data = await res.json();
       let updated = false;
 
-      if (data.routines !== undefined && data.routines !== null) {
+      if (data.routines !== undefined && data.routines !== null && data.routines.length > 0) {
         appState.routines = data.routines;
+        localStorage.setItem(STORAGE_KEYS.routines(pId), JSON.stringify(appState.routines));
+        updated = true;
+      } else if (!appState.routines || appState.routines.length === 0) {
+        appState.routines = JSON.parse(JSON.stringify(DEFAULT_ROUTINES));
         localStorage.setItem(STORAGE_KEYS.routines(pId), JSON.stringify(appState.routines));
         updated = true;
       }
@@ -862,6 +867,9 @@ function setupNavigation() {
 // --- Routine Selectors Setup ---
 function setupRoutineDropdowns() {
   routineSelect.innerHTML = '';
+  if (!appState.routines || appState.routines.length === 0) {
+    appState.routines = JSON.parse(JSON.stringify(DEFAULT_ROUTINES));
+  }
   appState.routines.forEach(routine => {
     const option = document.createElement('option');
     option.value = routine.id;
@@ -869,6 +877,10 @@ function setupRoutineDropdowns() {
     if (routine.id === appState.activeRoutineId) option.selected = true;
     routineSelect.appendChild(option);
   });
+
+  if (!appState.activeRoutineId && appState.routines.length > 0) {
+    appState.activeRoutineId = appState.routines[0].id;
+  }
 
   updateDayDropdown();
 
@@ -1025,8 +1037,6 @@ function startSessionTimer() {
   clearInterval(appState.sessionTimerInterval);
   appState.sessionTimerInterval = setInterval(() => {
     if (!appState.activeSession || appState.activeSession.isPaused) return;
-
-    appState.activeSession.elapsedSeconds += 1;
     updateSessionTimerDisplay();
     saveActiveSession();
   }, 1000);
@@ -1034,7 +1044,11 @@ function startSessionTimer() {
 }
 
 function updateSessionTimerDisplay() {
-  const secs = appState.activeSession ? appState.activeSession.elapsedSeconds : 0;
+  if (!appState.activeSession || !appState.activeSession.startTimeIso) return;
+  const startMs = new Date(appState.activeSession.startTimeIso).getTime();
+  const secs = Math.max(0, Math.floor((Date.now() - startMs) / 1000));
+  appState.activeSession.elapsedSeconds = secs;
+
   const h = String(Math.floor(secs / 3600)).padStart(2, '0');
   const m = String(Math.floor((secs % 3600) / 60)).padStart(2, '0');
   const s = String(secs % 60).padStart(2, '0');
@@ -1050,12 +1064,26 @@ function togglePauseWorkout() {
   saveActiveSession();
 }
 
+// Background-proof visibility listeners for mobile screen lock catch-up
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible') {
+    if (appState.activeSession) updateSessionTimerDisplay();
+    if (appState.restTimer && appState.restTimer.endTimeMs) updateRestTimerUI();
+  }
+});
+window.addEventListener('pageshow', () => {
+  if (appState.activeSession) updateSessionTimerDisplay();
+  if (appState.restTimer && appState.restTimer.endTimeMs) updateRestTimerUI();
+});
+
 function renderLiveExercisesCards() {
   liveExercisesContainer.innerHTML = '';
 
+  if (!appState.activeSession || !appState.activeSession.exercises) return;
+
   appState.activeSession.exercises.forEach(ex => {
     const sets = appState.activeSession.setsData[ex.id] || [];
-    const allDone = sets.every(s => s.completed);
+    const allDone = sets.length > 0 && sets.every(s => s.completed);
     const lastHistory = appState.weightsHistory[ex.id];
     const unit = ex.weightUnit || 'kg';
     const lastWeightStr = lastHistory ? `(Último: ${lastHistory.weight} ${lastHistory.unit || 'kg'})` : '';
@@ -1063,6 +1091,15 @@ function renderLiveExercisesCards() {
     const card = document.createElement('div');
     card.className = `exercise-live-card ${allDone ? 'completed' : ''}`;
     card.innerHTML = createLiveExerciseHeaderHTML(ex, lastWeightStr, unit);
+
+    // Swap Exercise handler (🔄 Cambiar)
+    const btnSwap = card.querySelector('.btn-swap-ex');
+    if (btnSwap) {
+      btnSwap.onclick = (e) => {
+        e.stopPropagation();
+        openSwapExerciseModal(ex.id);
+      };
+    }
 
     // Unit toggle buttons (kg vs lb) handler
     card.querySelectorAll('.btn-unit-toggle').forEach(btn => {
@@ -1076,6 +1113,27 @@ function renderLiveExercisesCards() {
     liveExercisesContainer.appendChild(card);
     const setsContainer = card.querySelector(`#setsContainer_${ex.id}`);
 
+    // Completed Exercise Accordion Summary Badge
+    if (allDone) {
+      const summaryBadge = document.createElement('div');
+      summaryBadge.className = 'completed-exercise-summary-badge';
+      summaryBadge.style.cssText = 'background: rgba(0, 230, 118, 0.08); border: 1px solid var(--accent-green); padding: 8px 12px; border-radius: var(--radius-sm); font-size: 12px; display: flex; justify-content: space-between; align-items: center; cursor: pointer; color: #fff; margin-bottom: 8px;';
+      summaryBadge.innerHTML = `
+        <span>✅ <strong>${ex.name}</strong> • ${sets.length}/${sets.length} series completadas</span>
+        <span class="toggle-summary-icon" style="color: var(--accent-green); font-weight: 700; font-size: 11px;">Ver Series ▾</span>
+      `;
+
+      setsContainer.style.display = 'none';
+
+      summaryBadge.onclick = () => {
+        const isHidden = setsContainer.style.display === 'none';
+        setsContainer.style.display = isHidden ? 'block' : 'none';
+        summaryBadge.querySelector('.toggle-summary-icon').textContent = isHidden ? 'Ocultar ▲' : 'Ver Series ▾';
+      };
+
+      card.insertBefore(summaryBadge, setsContainer);
+    }
+
     sets.forEach(set => {
       const weightVal = set.weight || 0;
       let comparativeText = '';
@@ -1086,6 +1144,8 @@ function renderLiveExercisesCards() {
         const kgVal = (weightVal * 0.453592).toFixed(1);
         comparativeText = `≈ ${kgVal} kg`;
       }
+
+      const isTimeBased = ['segundos', 'minutos', 'seg', 'min', 'tiempo'].includes((ex.unit || '').toLowerCase());
 
       const row = document.createElement('div');
       row.className = 'set-row';
@@ -1106,9 +1166,12 @@ function renderLiveExercisesCards() {
           </div>
         </div>
 
-        <!-- Reps Input + Stepper -->
+        <!-- Reps / Time Input + Stepper + Timer Button -->
         <div class="set-input-group">
-          <label class="set-input-label" style="margin-bottom: 2px;">Reps (${ex.unit || 'reps'})</label>
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2px;">
+            <label class="set-input-label">Reps (${ex.unit || 'reps'})</label>
+            ${isTimeBased ? `<button class="btn-ex-timer-start" style="font-size: 10px; background: rgba(0, 242, 254, 0.15); border: 1px solid var(--accent-cyan); color: var(--accent-cyan); border-radius: 4px; padding: 0 4px; cursor: pointer;">⏱️ Timer</button>` : ''}
+          </div>
           <div class="stepper-group">
             <button class="btn-step btn-reps-minus" ${set.completed ? 'disabled' : ''}>-</button>
             <input type="number" inputmode="numeric" pattern="[0-9]*" class="set-input reps-input" value="${set.actualReps}" ${set.completed ? 'disabled' : ''}>
@@ -1130,6 +1193,17 @@ function renderLiveExercisesCards() {
       const btnWeightPlus = row.querySelector('.btn-weight-plus');
       const btnRepsMinus = row.querySelector('.btn-reps-minus');
       const btnRepsPlus = row.querySelector('.btn-reps-plus');
+      const btnExTimerStart = row.querySelector('.btn-ex-timer-start');
+
+      if (btnExTimerStart) {
+        btnExTimerStart.onclick = () => openExerciseTimerModal(ex.name, set.actualReps || 45);
+      }
+
+      // Input Overwrite on Focus & Click (Fixes 025 issue)
+      weightInput.addEventListener('focus', (e) => e.target.select());
+      weightInput.addEventListener('click', (e) => e.target.select());
+      repsInput.addEventListener('focus', (e) => e.target.select());
+      repsInput.addEventListener('click', (e) => e.target.select());
 
       const updateConversion = (w) => {
         if (unit === 'kg') {
@@ -1245,14 +1319,275 @@ function updateWorkoutCompletionBanner() {
   const bannerSubtitle = document.getElementById('workoutCompletionSubtitle');
   if (!bannerTitle || !bannerSubtitle || !appState.activeSession) return;
 
+  const totalExercises = appState.activeSession.exercises ? appState.activeSession.exercises.length : 0;
+  let completedExercises = 0;
   let totalSets = 0;
   let completedSets = 0;
 
-  Object.keys(appState.activeSession.setsData || {}).forEach(exId => {
-    const sets = appState.activeSession.setsData[exId] || [];
+  (appState.activeSession.exercises || []).forEach(ex => {
+    const sets = appState.activeSession.setsData[ex.id] || [];
     totalSets += sets.length;
-    completedSets += sets.filter(s => s.completed).length;
+    const doneCount = sets.filter(s => s.completed).length;
+    completedSets += doneCount;
+    if (sets.length > 0 && doneCount === sets.length) {
+      completedExercises += 1;
+    }
   });
+
+  // Real-time counter header update
+  const headerDay = document.getElementById('activeRoutineDayName');
+  if (headerDay) {
+    headerDay.textContent = `${appState.activeSession.dayName} • (${completedExercises}/${totalExercises} Ejercicios)`;
+  }
+
+  if (totalExercises > 0 && completedExercises === totalExercises) {
+    bannerTitle.textContent = '🎉 ¡Todas las series y ejercicios completados!';
+    bannerSubtitle.textContent = `Has finalizado los ${completedExercises} ejercicios (${completedSets} series). Presiona "Finalizar y Guardar" para guardar tu sesión.`;
+  } else {
+    bannerTitle.textContent = `Progreso: ${completedExercises} de ${totalExercises} ejercicios completados (${completedSets}/${totalSets} series)`;
+    bannerSubtitle.textContent = 'Presiona "Finalizar y Guardar" al terminar para registrar la sesión en tu historial.';
+  }
+}
+
+// --- Swap Exercise Modal Handler ---
+function openSwapExerciseModal(targetExId) {
+  const modal = document.getElementById('swapExerciseModal');
+  const searchInput = document.getElementById('swapSearchInput');
+  const container = document.getElementById('swapExerciseListContainer');
+
+  modal.classList.remove('hidden');
+  searchInput.value = '';
+
+  const renderList = (filterText = '') => {
+    container.innerHTML = '';
+    const filtered = DEFAULT_EXERCISES_CATALOG.filter(ex =>
+      ex.name.toLowerCase().includes(filterText.toLowerCase()) ||
+      ex.category.toLowerCase().includes(filterText.toLowerCase())
+    );
+
+    filtered.forEach(newEx => {
+      const item = document.createElement('div');
+      item.className = 'card';
+      item.style.cssText = 'padding: 10px 14px; display: flex; justify-content: space-between; align-items: center; cursor: pointer; border-color: rgba(255,255,255,0.08);';
+      item.innerHTML = `
+        <div>
+          <strong style="color: #fff; font-size: 14px;">${newEx.name}</strong>
+          <div style="font-size: 11px; color: var(--text-muted); margin-top: 2px;">
+            ${newEx.category} • ${newEx.equipment || 'General'}
+          </div>
+        </div>
+        <button class="btn btn-primary btn-sm" style="font-size: 11px;">Sustituir ➔</button>
+      `;
+
+      item.onclick = () => {
+        const exIdx = appState.activeSession.exercises.findIndex(e => e.id === targetExId);
+        if (exIdx !== -1) {
+          const oldExId = targetExId;
+          appState.activeSession.exercises[exIdx] = { ...newEx, weightUnit: 'kg' };
+
+          if (!appState.activeSession.setsData[newEx.id]) {
+            const lastHistory = appState.weightsHistory[newEx.id];
+            const initW = lastHistory ? lastHistory.weight : 0;
+            const newSets = [];
+            for (let i = 1; i <= newEx.defaultSets; i++) {
+              newSets.push({ setNum: i, targetReps: newEx.defaultReps, actualReps: newEx.defaultReps, weight: initW, completed: false });
+            }
+            appState.activeSession.setsData[newEx.id] = newSets;
+          }
+          if (oldExId !== newEx.id) {
+            delete appState.activeSession.setsData[oldExId];
+          }
+
+          saveActiveSession();
+          renderLiveExercisesCards();
+        }
+        modal.classList.add('hidden');
+      };
+
+      container.appendChild(item);
+    });
+  };
+
+  renderList();
+  searchInput.oninput = (e) => renderList(e.target.value);
+  document.getElementById('btnCloseSwapModal').onclick = () => modal.classList.add('hidden');
+}
+
+// --- Time-Based Exercise Timer Modal Handler ---
+let currentExTimerInterval = null;
+let currentExTimerSeconds = 45;
+
+function openExerciseTimerModal(exName, targetSeconds) {
+  const modal = document.getElementById('exerciseTimerModal');
+  const title = document.getElementById('exTimerModalTitle');
+  const display = document.getElementById('exTimerDisplay');
+  const btnToggle = document.getElementById('btnExTimerToggle');
+
+  title.textContent = `⏱️ ${exName}`;
+  currentExTimerSeconds = targetSeconds || 45;
+
+  const updateDisplay = () => {
+    const m = String(Math.floor(currentExTimerSeconds / 60)).padStart(2, '0');
+    const s = String(currentExTimerSeconds % 60).padStart(2, '0');
+    display.textContent = `${m}:${s}`;
+  };
+
+  updateDisplay();
+  modal.classList.remove('hidden');
+
+  document.getElementById('btnExTimerSub10').onclick = () => {
+    currentExTimerSeconds = Math.max(5, currentExTimerSeconds - 10);
+    updateDisplay();
+  };
+  document.getElementById('btnExTimerAdd10').onclick = () => {
+    currentExTimerSeconds += 10;
+    updateDisplay();
+  };
+
+  let isRunning = false;
+  btnToggle.textContent = '▶ Iniciar';
+
+  btnToggle.onclick = () => {
+    if (isRunning) {
+      clearInterval(currentExTimerInterval);
+      isRunning = false;
+      btnToggle.textContent = '▶ Iniciar';
+    } else {
+      isRunning = true;
+      btnToggle.textContent = '⏸ Pausar';
+      const endMs = Date.now() + (currentExTimerSeconds * 1000);
+      currentExTimerInterval = setInterval(() => {
+        const remMs = endMs - Date.now();
+        const remSecs = Math.max(0, Math.ceil(remMs / 1000));
+        currentExTimerSeconds = remSecs;
+        updateDisplay();
+
+        if (remSecs <= 0) {
+          clearInterval(currentExTimerInterval);
+          isRunning = false;
+          btnToggle.textContent = '▶ Iniciar';
+          playTimerBeep();
+        }
+      }, 500);
+    }
+  };
+
+  document.getElementById('btnExTimerClose').onclick = () => {
+    clearInterval(currentExTimerInterval);
+    modal.classList.add('hidden');
+  };
+}
+
+// --- History Editing Modal Handler ---
+function openEditHistoryModal(record) {
+  const modal = document.getElementById('editHistoryModal');
+  const container = document.getElementById('editHistoryFormContent');
+  modal.classList.remove('hidden');
+
+  let editedRecord = JSON.parse(JSON.stringify(record));
+
+  const renderForm = () => {
+    container.innerHTML = `
+      <div class="form-group">
+        <label class="form-label">Nombre del Día / Rutina:</label>
+        <input type="text" id="editHistDayName" class="form-control" value="${editedRecord.dayName}">
+      </div>
+      <div style="display: flex; gap: 10px;">
+        <div class="form-group" style="flex: 1;">
+          <label class="form-label">Fecha:</label>
+          <input type="text" id="editHistDate" class="form-control" value="${editedRecord.dateFormatted}">
+        </div>
+        <div class="form-group" style="flex: 1;">
+          <label class="form-label">Duración (minutos):</label>
+          <input type="number" id="editHistDurationMins" class="form-control" value="${Math.floor(editedRecord.durationSeconds / 60)}">
+        </div>
+      </div>
+      <h5 style="color: var(--accent-cyan); margin: 10px 0 6px 0; font-size: 13px;">Ejercicios Registrados:</h5>
+      <div id="editHistExercisesList" style="display: flex; flex-direction: column; gap: 10px;"></div>
+    `;
+
+    const exListContainer = container.querySelector('#editHistExercisesList');
+    (editedRecord.detailedExercises || []).forEach((ex, exIdx) => {
+      const exCard = document.createElement('div');
+      exCard.className = 'card';
+      exCard.style.cssText = 'padding: 10px; background: rgba(255,255,255,0.03); border-color: rgba(255,255,255,0.08);';
+
+      let setsRowsHtml = (ex.sets || []).map((s, sIdx) => `
+        <div style="display: flex; align-items: center; gap: 8px; margin-top: 6px;">
+          <span style="font-size: 12px; font-weight: 700; min-width: 24px; color: var(--accent-cyan);">S${s.setNum}</span>
+          <label style="font-size: 11px; color: var(--text-muted);">Peso:</label>
+          <input type="number" step="0.5" class="form-control set-edit-w" data-exidx="${exIdx}" data-sidx="${sIdx}" value="${s.weight}" style="width: 70px; padding: 4px 6px; font-size: 12px;">
+          <label style="font-size: 11px; color: var(--text-muted);">Reps:</label>
+          <input type="number" class="form-control set-edit-r" data-exidx="${exIdx}" data-sidx="${sIdx}" value="${s.actualReps}" style="width: 60px; padding: 4px 6px; font-size: 12px;">
+        </div>
+      `).join('');
+
+      exCard.innerHTML = `
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+          <strong style="color: #fff; font-size: 13px;">${ex.name}</strong>
+          <span class="badge badge-${ex.category ? ex.category.toLowerCase() : 'pierna'}">${ex.category || ''}</span>
+        </div>
+        <div>${setsRowsHtml}</div>
+      `;
+      exListContainer.appendChild(exCard);
+    });
+
+    container.querySelectorAll('input').forEach(inp => {
+      inp.addEventListener('focus', (e) => e.target.select());
+      inp.addEventListener('click', (e) => e.target.select());
+    });
+  };
+
+  renderForm();
+
+  document.getElementById('btnCloseEditHistoryModal').onclick = () => modal.classList.add('hidden');
+
+  document.getElementById('btnSaveEditHistory').onclick = async () => {
+    editedRecord.dayName = document.getElementById('editHistDayName').value.trim() || editedRecord.dayName;
+    editedRecord.dateFormatted = document.getElementById('editHistDate').value.trim() || editedRecord.dateFormatted;
+    const durationMins = parseInt(document.getElementById('editHistDurationMins').value, 10) || 1;
+    editedRecord.durationSeconds = durationMins * 60;
+
+    let totalSets = 0;
+    let totalVol = 0;
+
+    (editedRecord.detailedExercises || []).forEach((ex, exIdx) => {
+      (ex.sets || []).forEach((s, sIdx) => {
+        const wInp = container.querySelector(`.set-edit-w[data-exidx="${exIdx}"][data-sidx="${sIdx}"]`);
+        const rInp = container.querySelector(`.set-edit-r[data-exidx="${exIdx}"][data-sidx="${sIdx}"]`);
+        if (wInp) s.weight = parseFloat(wInp.value) || 0;
+        if (rInp) s.actualReps = parseInt(rInp.value, 10) || 0;
+
+        totalSets += 1;
+        const u = s.weightUnit || 'kg';
+        const wKg = (u === 'lb') ? (s.weight * 0.453592) : s.weight;
+        s.weightKg = parseFloat(wKg.toFixed(1));
+        totalVol += (wKg * s.actualReps);
+      });
+    });
+
+    editedRecord.totalSets = totalSets;
+    editedRecord.totalVolumeKg = Math.round(totalVol);
+
+    const idx = appState.workoutHistory.findIndex(h => h.id === editedRecord.id);
+    if (idx !== -1) {
+      appState.workoutHistory[idx] = editedRecord;
+    }
+
+    saveWorkoutHistory();
+    renderHistory();
+    modal.classList.add('hidden');
+
+    const pId = appState.activeProfileId;
+    if (pId && pId !== 'prof_guest' && !pId.startsWith('prof_guest')) {
+      fetch(`/api/history/${pId}/${editedRecord.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(editedRecord)
+      }).catch(() => {});
+    }
+  };
+}
 
   if (totalSets > 0 && completedSets === totalSets) {
     bannerTitle.textContent = '🎉 ¡Todas las series completadas!';
@@ -1491,6 +1826,15 @@ function renderHistory() {
 
     item.innerHTML = createHistoryCardHTML(record, mins);
 
+    // Edit Log Button Handler
+    const editLogBtn = item.querySelector('.edit-log-btn');
+    if (editLogBtn) {
+      editLogBtn.onclick = (e) => {
+        e.stopPropagation();
+        openEditHistoryModal(record);
+      };
+    }
+
     // Delete Log Button Handler
     const delLogBtn = item.querySelector('.del-log-btn');
     delLogBtn.onclick = (e) => {
@@ -1515,7 +1859,7 @@ function renderHistory() {
     const detailList = item.querySelector('.detail-exercises-list');
 
     item.onclick = (e) => {
-      if (e.target.closest('.del-log-btn')) return;
+      if (e.target.closest('.del-log-btn') || e.target.closest('.edit-log-btn')) return;
 
       const isHidden = drawer.classList.toggle('hidden');
       toggleLabel.textContent = isHidden ? 'Ver Detalle ▼' : 'Ocultar Detalle ▲';
@@ -1852,9 +2196,10 @@ btnSaveRoutine.onclick = () => {
 function createLiveExerciseHeaderHTML(ex, lastWeightStr, unit) {
   return `
     <div class="exercise-live-title">
-      <div>
+      <div style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
         <span>${ex.name}</span>
-        <span class="badge badge-${ex.category.toLowerCase()}" style="margin-left: 6px;">${ex.category}</span>
+        <span class="badge badge-${ex.category.toLowerCase()}">${ex.category}</span>
+        <button class="btn btn-secondary btn-sm btn-swap-ex" data-exid="${ex.id}" style="font-size: 10px; padding: 2px 6px; border-color: var(--accent-cyan); color: var(--accent-cyan);">🔄 Cambiar</button>
       </div>
       <div style="display: flex; align-items: center; gap: 8px;">
         <div style="font-size: 11px; color: var(--accent-cyan); font-weight: 500;">
@@ -1875,8 +2220,9 @@ function createHistoryCardHTML(record, mins) {
   return `
     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
       <strong style="font-size: 16px; color: #fff;">${record.dayName}</strong>
-      <div style="display: flex; align-items: center; gap: 8px;">
+      <div style="display: flex; align-items: center; gap: 6px;">
         <span style="font-size: 11px; color: var(--accent-cyan);">${record.dateFormatted} • ${record.timeFormatted}</span>
+        <button class="btn btn-secondary btn-sm edit-log-btn" style="padding: 2px 8px; font-size: 11px; border-color: var(--accent-cyan); color: var(--accent-cyan);">✏️ Editar</button>
         <button class="btn btn-danger btn-sm del-log-btn" style="padding: 2px 6px; font-size: 11px;">🗑️</button>
       </div>
     </div>
