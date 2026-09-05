@@ -1,5 +1,5 @@
 {
-  "name": "CenterFit GymTracker",
+  "name": "My Gym Tracker App",
   "short_name": "GymTracker",
   "start_url": "./index.html",
   "display": "standalone",

@@ -1,13 +1,13 @@
-# 🏋️‍♂️ CenterFit GymTracker PWA
+# 🏋️‍♂️ My Gym Tracker App PWA
 
 [![FastAPI](https://img.shields.io/badge/Backend-FastAPI-009688.svg?style=flat&logo=fastapi)](https://fastapi.tiangolo.com/)
 [![PWA](https://img.shields.io/badge/Frontend-PWA%20Offline--First-00f2fe.svg?style=flat)](https://developer.mozilla.org/es/docs/Web/Progressive_web_apps)
 [![Database](https://img.shields.io/badge/Database-SQLite%20%7C%20PostgreSQL-4169E1.svg?style=flat&logo=postgresql)](https://www.postgresql.org/)
 [![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 
-**CenterFit GymTracker** es una Progressive Web App (PWA) de nivel profesional, ligera y con arquitectura **Offline-First**, diseñada para el seguimiento de rutinas de fuerza, cálculo de sobrecarga progresiva, estimación de 1RM, volumen semanal de carga y guía visual técnica animada de ejercicios.
+**My Gym Tracker App** es una Progressive Web App (PWA) de nivel profesional, ligera y con arquitectura **Offline-First**, diseñada para el seguimiento de rutinas de fuerza, cálculo de sobrecarga progresiva, estimación de 1RM, volumen semanal de carga y guía visual técnica animada de ejercicios.
 
-Basada en el catálogo de ejercicios oficiales de **CenterFit mx Gimnasio**.
+Basada en el catálogo de ejercicios oficiales de **My GymTracker **.
 
 ---
 

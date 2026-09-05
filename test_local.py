@@ -4,29 +4,35 @@ import json
 import urllib.request
 
 print("==================================================")
-print("🧪 VERIFICACIÓN DE PRUEBA LOCAL - CENTERFIT GYMTRACKER")
+print("🧪 VERIFICACIÓN DE PRUEBA LOCAL - My Gym Tracker App")
 print("==================================================")
 
 # 1. Check HTML files
-frontend_html = os.path.join(os.path.dirname(__file__), 'frontend', 'index.html')
-standalone_html = os.path.join(os.path.dirname(__file__), 'standalone', 'gymtracker_standalone.html')
+frontend_html = os.path.join(os.path.dirname(
+    __file__), 'frontend', 'index.html')
+standalone_html = os.path.join(os.path.dirname(
+    __file__), 'standalone', 'gymtracker_standalone.html')
 
 print(f"\n1. Verificando archivos HTML...")
 if os.path.exists(frontend_html):
-    print(f"  ✅ Frontend HTML: Encontrado ({os.path.getsize(frontend_html)} bytes)")
+    print(
+        f"  ✅ Frontend HTML: Encontrado ({os.path.getsize(frontend_html)} bytes)")
 else:
     print(f"  ❌ Frontend HTML: No encontrado")
 
 if os.path.exists(standalone_html):
-    print(f"  ✅ Standalone HTML autónomo: Encontrado ({os.path.getsize(standalone_html)} bytes)")
+    print(
+        f"  ✅ Standalone HTML autónomo: Encontrado ({os.path.getsize(standalone_html)} bytes)")
 else:
     print(f"  ❌ Standalone HTML: No encontrado")
 
 # 2. Check JavaScript & Analytics Modules
 print(f"\n2. Verificando módulos JS y Analítica...")
-analytics_js = os.path.join(os.path.dirname(__file__), 'frontend', 'js', 'analytics.js')
+analytics_js = os.path.join(os.path.dirname(
+    __file__), 'frontend', 'js', 'analytics.js')
 if os.path.exists(analytics_js):
-    print(f"  ✅ Módulo de Analítica (analytics.js): Encontrado ({os.path.getsize(analytics_js)} bytes)")
+    print(
+        f"  ✅ Módulo de Analítica (analytics.js): Encontrado ({os.path.getsize(analytics_js)} bytes)")
 else:
     print(f"  ❌ Módulo de Analítica: No encontrado")
 

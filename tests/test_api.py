@@ -4,17 +4,20 @@ from app_server import app, Base, engine
 
 client = TestClient(app)
 
+
 @pytest.fixture(autouse=True)
 def setup_db():
     Base.metadata.create_all(bind=engine)
     yield
+
 
 def test_health_endpoint():
     response = client.get("/api/health")
     assert response.status_code == 200
     json_data = response.json()
     assert json_data["status"] == "online"
-    assert "CenterFit GymTracker API" in json_data["app"]
+    assert "My Gym Tracker App API" in json_data["app"]
+
 
 def test_state_endpoint_fallback():
     response = client.get("/api/state/test_profile_id")
@@ -22,6 +25,7 @@ def test_state_endpoint_fallback():
     json_data = response.json()
     assert "routines" in json_data
     assert "weightsHistory" in json_data
+
 
 def test_sync_state_endpoint():
     payload = {
