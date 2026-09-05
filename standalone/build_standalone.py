@@ -38,8 +38,8 @@ if img_src:
     html = html.replace('href="assets/apple-touch-icon.png"', f'href="{img_src}"')
 
 # Replace JS script tags
-script_tags = r'<script src="js/exercises_data\.js"></script>\s*<script src="js/app\.js"></script>\s*<script src="js/analytics\.js"></script>'
-bundled_js = f'<script>\n{ex_js}\n\n{app_js}\n\n{analytics_js}\n</script>'
+script_tags = r'<script src="js/exercises_data\.js"></script>\s*<script src="js/analytics\.js"></script>\s*<script src="js/app\.js"></script>'
+bundled_js = f'<script>\n{ex_js}\n\n{analytics_js}\n\n{app_js}\n</script>'
 html = re.sub(script_tags, bundled_js, html)
 
 out_file = os.path.join(STANDALONE_DIR, 'gymtracker_standalone.html')

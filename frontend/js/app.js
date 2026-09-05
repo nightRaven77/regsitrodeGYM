@@ -316,6 +316,7 @@ document.addEventListener('DOMContentLoaded', () => {
   setupProfileUI();
   setupAddExerciseModal();
   setupNavigation();
+  setupExerciseGuideModalUI();
   refreshCurrentProfileUI();
 
   // Register Service Worker for PWA Offline mode with Instant Auto-Update Detection
@@ -1152,6 +1153,15 @@ function renderLiveExercisesCards() {
       };
     }
 
+    // Guide button handler (👁️ Guía)
+    const btnGuide = card.querySelector('.btn-guide-ex');
+    if (btnGuide) {
+      btnGuide.onclick = (e) => {
+        e.stopPropagation();
+        openExerciseGuide(ex.guideSlug || ex.name);
+      };
+    }
+
     // Unit toggle buttons (kg vs lb) handler
     card.querySelectorAll('.btn-unit-toggle').forEach(btn => {
       btn.onclick = () => {
@@ -1427,8 +1437,19 @@ function openSwapExerciseModal(targetExId) {
             ${newEx.category} • ${newEx.equipment || 'General'}
           </div>
         </div>
-        <button class="btn btn-primary btn-sm" style="font-size: 11px;">Sustituir ➔</button>
+        <div style="display: flex; gap: 6px; align-items: center;">
+          <button class="btn btn-secondary btn-sm btn-swap-guide" style="font-size: 11px; padding: 3px 8px;" title="Ver guía visual">👁️ Guía</button>
+          <button class="btn btn-primary btn-sm btn-do-swap" style="font-size: 11px;">Sustituir ➔</button>
+        </div>
       `;
+
+      const btnGuide = item.querySelector('.btn-swap-guide');
+      if (btnGuide) {
+        btnGuide.onclick = (e) => {
+          e.stopPropagation();
+          openExerciseGuide(newEx.guideSlug || newEx.name);
+        };
+      }
 
       item.onclick = () => {
         const exIdx = appState.activeSession.exercises.findIndex(e => e.id === targetExId);
@@ -1837,12 +1858,23 @@ function renderCatalog(category = 'ALL', searchQuery = '') {
             <span class="badge" style="background: rgba(255, 255, 255, 0.08); color: var(--text-muted); border: 1px solid var(--border-color);">${equipment}</span>
           </div>
         </div>
+        <button class="btn btn-secondary btn-sm btn-view-guide" style="font-size: 11px; padding: 4px 10px; border-color: var(--accent-cyan); color: var(--accent-cyan); background: rgba(0, 242, 254, 0.08); border-radius: 12px; font-weight: 700; display: flex; align-items: center; gap: 4px;">
+          👁️ Guía
+        </button>
       </div>
       <div style="font-size: 11px; color: var(--text-muted); display: flex; justify-content: space-between; align-items: center; background: rgba(0,0,0,0.25); padding: 6px 10px; border-radius: var(--radius-sm); border: 1px solid rgba(255, 255, 255, 0.05);">
         <span>📊 Carga sugerida: <strong style="color: #fff;">${lastWeightStr}</strong></span>
         <span>⚡ Serie base: ${ex.defaultSets || 1} x ${ex.defaultReps || 12} ${ex.unit || 'reps'}</span>
       </div>
     `;
+
+    const btnGuide = card.querySelector('.btn-view-guide');
+    if (btnGuide) {
+      btnGuide.onclick = () => {
+        openExerciseGuide(ex.guideSlug || ex.name);
+      };
+    }
+
     catalogList.appendChild(card);
   });
 }
@@ -2241,6 +2273,7 @@ function createLiveExerciseHeaderHTML(ex, lastWeightStr, unit) {
       <div style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
         <span>${ex.name}</span>
         <span class="badge badge-${ex.category.toLowerCase()}">${ex.category}</span>
+        <button class="btn btn-secondary btn-sm btn-guide-ex" data-exslug="${ex.guideSlug || ''}" data-exname="${ex.name}" style="font-size: 10px; padding: 2px 8px; border-color: var(--accent-cyan); color: #fff; background: rgba(0, 242, 254, 0.15); border-radius: 12px; font-weight: 700;">👁️ Guía</button>
         <button class="btn btn-secondary btn-sm btn-swap-ex" data-exid="${ex.id}" style="font-size: 10px; padding: 2px 6px; border-color: var(--accent-cyan); color: var(--accent-cyan);">🔄 Cambiar</button>
       </div>
       <div style="display: flex; align-items: center; gap: 8px;">
@@ -2306,3 +2339,245 @@ function createRoutineItemHTML(routine) {
     </div>
   `;
 }
+
+// ==========================================================================
+// Exercise Visual Guide Controller & Animated SVG Player
+// ==========================================================================
+let guidePlayerState = {
+  currentSlug: null,
+  currentExercise: null,
+  currentFrame: 1,
+  isPlaying: true,
+  timerId: null,
+  sequence: [1, 2, 3, 2],
+  seqIdx: 0
+};
+
+function getGuideExercise(slugOrName) {
+  if (!slugOrName) return null;
+  const searchStr = String(slugOrName).toLowerCase().trim();
+
+  // 1. Busqueda en DEFAULT_EXERCISES_CATALOG (80 principales)
+  let found = DEFAULT_EXERCISES_CATALOG.find(ex =>
+    (ex.guideSlug && ex.guideSlug.toLowerCase() === searchStr) ||
+    (ex.id && ex.id.toLowerCase() === searchStr) ||
+    (ex.name && ex.name.toLowerCase() === searchStr)
+  );
+
+  if (found) {
+    const manifestItem = (typeof ALL_WORKOUT_GUIDE_CATALOG !== 'undefined')
+      ? ALL_WORKOUT_GUIDE_CATALOG.find(m => m.slug === found.guideSlug)
+      : null;
+
+    return {
+      name: found.name,
+      category: found.category,
+      slug: found.guideSlug || 'bench-press',
+      equipment: (manifestItem && manifestItem.equipment) || found.equipment || 'General',
+      primaryMuscle: (manifestItem && manifestItem.primaryMuscle) || found.category,
+      secondaryMuscles: (manifestItem && manifestItem.secondaryMuscles) || [],
+      alternatives: found.alternatives || []
+    };
+  }
+
+  // 2. Busqueda en los 302 ejercicios de ALL_WORKOUT_GUIDE_CATALOG
+  if (typeof ALL_WORKOUT_GUIDE_CATALOG !== 'undefined') {
+    let manifestItem = ALL_WORKOUT_GUIDE_CATALOG.find(m =>
+      m.slug === searchStr || m.name.toLowerCase() === searchStr || m.id === searchStr
+    );
+    if (!manifestItem) {
+      manifestItem = ALL_WORKOUT_GUIDE_CATALOG.find(m => m.name.toLowerCase().includes(searchStr));
+    }
+    if (manifestItem) {
+      return {
+        name: manifestItem.name,
+        category: manifestItem.primaryMuscle || 'General',
+        slug: manifestItem.slug,
+        equipment: manifestItem.equipment || 'General',
+        primaryMuscle: manifestItem.primaryMuscle || 'General',
+        secondaryMuscles: manifestItem.secondaryMuscles || [],
+        alternatives: []
+      };
+    }
+  }
+
+  return {
+    name: slugOrName,
+    category: 'General',
+    slug: 'bench-press',
+    equipment: 'General',
+    primaryMuscle: 'General',
+    secondaryMuscles: [],
+    alternatives: []
+  };
+}
+
+function openExerciseGuide(slugOrName) {
+  const guideModal = document.getElementById('exerciseGuideModal');
+  if (!guideModal) return;
+
+  const exData = getGuideExercise(slugOrName);
+  if (!exData) return;
+
+  guidePlayerState.currentExercise = exData;
+  guidePlayerState.currentSlug = exData.slug;
+  guidePlayerState.currentFrame = 1;
+  guidePlayerState.seqIdx = 0;
+  guidePlayerState.isPlaying = true;
+
+  const guideExTitle = document.getElementById('guideExTitle');
+  const guideExSub = document.getElementById('guideExSub');
+  const guidePrimaryMuscle = document.getElementById('guidePrimaryMuscle');
+  const guideSecondaryMuscles = document.getElementById('guideSecondaryMuscles');
+  const guideEquipment = document.getElementById('guideEquipment');
+
+  if (guideExTitle) guideExTitle.textContent = exData.name;
+  if (guideExSub) guideExSub.textContent = `Categoría: ${exData.category}`;
+  if (guidePrimaryMuscle) guidePrimaryMuscle.textContent = exData.primaryMuscle;
+  if (guideEquipment) guideEquipment.textContent = exData.equipment;
+
+  if (guideSecondaryMuscles) {
+    guideSecondaryMuscles.innerHTML = (exData.secondaryMuscles || []).map(m =>
+      `<span class="badge" style="background: rgba(0, 242, 254, 0.1); color: var(--accent-cyan); border: 1px solid var(--glass-border);">${m}</span>`
+    ).join('');
+  }
+
+  renderGuideAlternatives(exData);
+  guideModal.classList.remove('hidden');
+
+  renderCurrentGuideFrame();
+  startGuideAnimation();
+}
+
+function renderGuideAlternatives(exData) {
+  const container = document.getElementById('guideAlternativesList');
+  const section = document.getElementById('guideAlternativesSection');
+  if (!container || !section) return;
+
+  container.innerHTML = '';
+  let alts = exData.alternatives || [];
+
+  if (alts.length === 0 && typeof ALL_WORKOUT_GUIDE_CATALOG !== 'undefined') {
+    const sameMuscle = ALL_WORKOUT_GUIDE_CATALOG.filter(m =>
+      m.primaryMuscle.toLowerCase() === exData.primaryMuscle.toLowerCase() && m.slug !== exData.slug
+    ).slice(0, 3);
+    alts = sameMuscle.map(m => m.slug);
+  }
+
+  if (alts.length === 0) {
+    section.style.display = 'none';
+    return;
+  }
+
+  section.style.display = 'block';
+
+  alts.forEach(altSlug => {
+    const altData = getGuideExercise(altSlug);
+    if (!altData) return;
+
+    const btn = document.createElement('button');
+    btn.className = 'btn-guide-pill';
+    btn.innerHTML = `<span>⚡ ${altData.name}</span>`;
+    btn.onclick = () => {
+      openExerciseGuide(altSlug);
+    };
+    container.appendChild(btn);
+  });
+}
+
+function closeExerciseGuide() {
+  stopGuideAnimation();
+  const guideModal = document.getElementById('exerciseGuideModal');
+  if (guideModal) guideModal.classList.add('hidden');
+}
+
+function renderCurrentGuideFrame() {
+  const img = document.getElementById('guideFrameImg');
+  const badge = document.getElementById('guideFrameBadge');
+  const frameNum = guidePlayerState.currentFrame;
+
+  if (img && guidePlayerState.currentSlug) {
+    img.src = `assets/exercises/${guidePlayerState.currentSlug}/frame-${frameNum}.svg`;
+  }
+  if (badge) {
+    badge.textContent = `Cuadro ${frameNum}/3`;
+  }
+
+  document.querySelectorAll('.guide-dot').forEach(dot => {
+    const dNum = parseInt(dot.getAttribute('data-frame'), 10);
+    dot.classList.toggle('active', dNum === frameNum);
+  });
+}
+
+function startGuideAnimation() {
+  stopGuideAnimation();
+  guidePlayerState.isPlaying = true;
+
+  const btnToggle = document.getElementById('btnGuideToggle');
+  if (btnToggle) btnToggle.textContent = '⏸ Pausa';
+
+  guidePlayerState.timerId = setInterval(() => {
+    guidePlayerState.seqIdx = (guidePlayerState.seqIdx + 1) % guidePlayerState.sequence.length;
+    guidePlayerState.currentFrame = guidePlayerState.sequence[guidePlayerState.seqIdx];
+    renderCurrentGuideFrame();
+  }, 500);
+}
+
+function stopGuideAnimation() {
+  if (guidePlayerState.timerId) {
+    clearInterval(guidePlayerState.timerId);
+    guidePlayerState.timerId = null;
+  }
+  guidePlayerState.isPlaying = false;
+  const btnToggle = document.getElementById('btnGuideToggle');
+  if (btnToggle) btnToggle.textContent = '▶ Reproducir';
+}
+
+function toggleGuideAnimation() {
+  if (guidePlayerState.isPlaying) {
+    stopGuideAnimation();
+  } else {
+    startGuideAnimation();
+  }
+}
+
+function nextGuideFrame() {
+  stopGuideAnimation();
+  guidePlayerState.currentFrame = (guidePlayerState.currentFrame % 3) + 1;
+  renderCurrentGuideFrame();
+}
+
+function prevGuideFrame() {
+  stopGuideAnimation();
+  guidePlayerState.currentFrame = guidePlayerState.currentFrame === 1 ? 3 : guidePlayerState.currentFrame - 1;
+  renderCurrentGuideFrame();
+}
+
+function setupExerciseGuideModalUI() {
+  const btnClose = document.getElementById('btnCloseGuideModal');
+  const btnToggle = document.getElementById('btnGuideToggle');
+  const btnPrev = document.getElementById('btnGuidePrev');
+  const btnNext = document.getElementById('btnGuideNext');
+  const guideModal = document.getElementById('exerciseGuideModal');
+
+  if (btnClose) btnClose.onclick = closeExerciseGuide;
+  if (btnToggle) btnToggle.onclick = toggleGuideAnimation;
+  if (btnPrev) btnPrev.onclick = prevGuideFrame;
+  if (btnNext) btnNext.onclick = nextGuideFrame;
+
+  if (guideModal) {
+    guideModal.onclick = (e) => {
+      if (e.target === guideModal) closeExerciseGuide();
+    };
+  }
+
+  document.querySelectorAll('.guide-dot').forEach(dot => {
+    dot.onclick = () => {
+      stopGuideAnimation();
+      const fNum = parseInt(dot.getAttribute('data-frame'), 10);
+      guidePlayerState.currentFrame = fNum;
+      renderCurrentGuideFrame();
+    };
+  });
+}
+
