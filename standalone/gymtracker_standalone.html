@@ -1791,6 +1791,547 @@ body {
     <script>
 // Catálogo Oficial de Ejercicios extraído de My Gym Tracker (Todas las rutinas inician con 1 serie por defecto)
 
+const DEFAULT_GUIDE_MAPPING = {
+  "p1": {
+    "guideSlug": "seated-leg-curl",
+    "alternatives": [
+      "lying-leg-curl",
+      "stability-ball-hamstring-curl"
+    ]
+  },
+  "p2": {
+    "guideSlug": "leg-extension",
+    "alternatives": [
+      "sissy-squat",
+      "bodyweight-squat"
+    ]
+  },
+  "p3": {
+    "guideSlug": "lying-leg-curl",
+    "alternatives": [
+      "seated-leg-curl",
+      "nordic-hamstring-curl"
+    ]
+  },
+  "p4": {
+    "guideSlug": "leg-press",
+    "alternatives": [
+      "hack-squat",
+      "belt-squat",
+      "squat"
+    ]
+  },
+  "p5": {
+    "guideSlug": "smith-machine-squat",
+    "alternatives": [
+      "squat",
+      "hack-squat",
+      "smith-machine-split-squat"
+    ]
+  },
+  "p6": {
+    "guideSlug": "squat",
+    "alternatives": [
+      "front-squat",
+      "goblet-squat",
+      "smith-machine-squat"
+    ]
+  },
+  "p7": {
+    "guideSlug": "single-leg-romanian-deadlift",
+    "alternatives": [
+      "single-leg-glute-bridge",
+      "rack-pull"
+    ]
+  },
+  "p8": {
+    "guideSlug": "side-lying-leg-raise",
+    "alternatives": [
+      "cossack-squat",
+      "skater-squat"
+    ]
+  },
+  "p9": {
+    "guideSlug": "cossack-squat",
+    "alternatives": [
+      "side-lying-leg-raise"
+    ]
+  },
+  "p10": {
+    "guideSlug": "single-leg-calf-raise",
+    "alternatives": [
+      "leg-press-calf-raise"
+    ]
+  },
+  "p11": {
+    "guideSlug": "split-squat",
+    "alternatives": [
+      "bulgarian-split-squat",
+      "front-foot-elevated-split-squat"
+    ]
+  },
+  "p12": {
+    "guideSlug": "single-leg-glute-bridge",
+    "alternatives": [
+      "cable-pull-through",
+      "glute-focused-back-extension"
+    ]
+  },
+  "p13": {
+    "guideSlug": "single-leg-glute-bridge",
+    "alternatives": [
+      "cable-pull-through"
+    ]
+  },
+  "p14": {
+    "guideSlug": "single-leg-glute-bridge",
+    "alternatives": [
+      "cable-pull-through"
+    ]
+  },
+  "p15": {
+    "guideSlug": "wall-handstand-push-up",
+    "alternatives": [
+      "bodyweight-squat"
+    ]
+  },
+  "p16": {
+    "guideSlug": "single-leg-romanian-deadlift",
+    "alternatives": [
+      "rack-pull",
+      "cable-pull-through"
+    ]
+  },
+  "p17": {
+    "guideSlug": "single-leg-glute-bridge",
+    "alternatives": [
+      "glute-focused-back-extension"
+    ]
+  },
+  "p18": {
+    "guideSlug": "leg-press",
+    "alternatives": [
+      "hack-squat"
+    ]
+  },
+  "p19": {
+    "guideSlug": "bulgarian-split-squat",
+    "alternatives": [
+      "smith-machine-bulgarian-split-squat",
+      "split-squat"
+    ]
+  },
+  "c1": {
+    "guideSlug": "decline-bench-press",
+    "alternatives": [
+      "decline-dumbbell-press",
+      "decline-push-up"
+    ]
+  },
+  "c2": {
+    "guideSlug": "push-up",
+    "alternatives": [
+      "wide-push-up",
+      "incline-push-up",
+      "diamond-push-up"
+    ]
+  },
+  "c3": {
+    "guideSlug": "machine-chest-press",
+    "alternatives": [
+      "bench-press",
+      "incline-dumbbell-press"
+    ]
+  },
+  "c4": {
+    "guideSlug": "incline-bench-press",
+    "alternatives": [
+      "incline-dumbbell-press",
+      "incline-push-up"
+    ]
+  },
+  "c5": {
+    "guideSlug": "bench-press",
+    "alternatives": [
+      "dumbbell-bench-press",
+      "smith-machine-bench-press",
+      "push-up"
+    ]
+  },
+  "c6": {
+    "guideSlug": "cable-fly",
+    "alternatives": [
+      "pec-deck",
+      "push-up"
+    ]
+  },
+  "c7": {
+    "guideSlug": "incline-dumbbell-press",
+    "alternatives": [
+      "incline-bench-press",
+      "decline-dumbbell-press"
+    ]
+  },
+  "c8": {
+    "guideSlug": "pec-deck",
+    "alternatives": [
+      "cable-fly",
+      "machine-chest-press"
+    ]
+  },
+  "c9": {
+    "guideSlug": "machine-chest-press",
+    "alternatives": [
+      "bench-press"
+    ]
+  },
+  "c10": {
+    "guideSlug": "chest-dip",
+    "alternatives": [
+      "dip",
+      "bench-dip",
+      "weighted-dip"
+    ]
+  },
+  "b1": {
+    "guideSlug": "pull-up",
+    "alternatives": [
+      "chin-up",
+      "wide-grip-lat-pulldown",
+      "assisted-pull-up"
+    ]
+  },
+  "b2": {
+    "guideSlug": "lat-pulldown",
+    "alternatives": [
+      "wide-grip-lat-pulldown",
+      "banded-lat-pulldown",
+      "pull-up"
+    ]
+  },
+  "b3": {
+    "guideSlug": "close-grip-lat-pulldown",
+    "alternatives": [
+      "lat-pulldown",
+      "chin-up"
+    ]
+  },
+  "b4": {
+    "guideSlug": "machine-row",
+    "alternatives": [
+      "seated-row",
+      "t-bar-row",
+      "barbell-row"
+    ]
+  },
+  "b5": {
+    "guideSlug": "one-arm-dumbbell-row",
+    "alternatives": [
+      "dumbbell-bent-over-row",
+      "seated-row"
+    ]
+  },
+  "b6": {
+    "guideSlug": "lat-pulldown",
+    "alternatives": [
+      "machine-row"
+    ]
+  },
+  "b7": {
+    "guideSlug": "barbell-row",
+    "alternatives": [
+      "dumbbell-bent-over-row",
+      "pendlay-row",
+      "t-bar-row"
+    ]
+  },
+  "b8": {
+    "guideSlug": "back-extension",
+    "alternatives": [
+      "reverse-hyperextension",
+      "glute-focused-back-extension"
+    ]
+  },
+  "b9": {
+    "guideSlug": "seated-row",
+    "alternatives": [
+      "machine-row",
+      "chest-supported-row"
+    ]
+  },
+  "b10": {
+    "guideSlug": "lat-pulldown",
+    "alternatives": [
+      "wide-grip-lat-pulldown"
+    ]
+  },
+  "s1": {
+    "guideSlug": "machine-shoulder-press",
+    "alternatives": [
+      "overhead-press",
+      "seated-dumbbell-press"
+    ]
+  },
+  "s2": {
+    "guideSlug": "cable-lateral-raise",
+    "alternatives": [
+      "lateral-raise"
+    ]
+  },
+  "s3": {
+    "guideSlug": "overhead-press",
+    "alternatives": [
+      "push-press",
+      "standing-dumbbell-press",
+      "arnold-press"
+    ]
+  },
+  "s4": {
+    "guideSlug": "overhead-press",
+    "alternatives": [
+      "machine-shoulder-press"
+    ]
+  },
+  "s5": {
+    "guideSlug": "lateral-raise",
+    "alternatives": [
+      "cable-lateral-raise"
+    ]
+  },
+  "s6": {
+    "guideSlug": "front-raise",
+    "alternatives": [
+      "lateral-raise"
+    ]
+  },
+  "s7": {
+    "guideSlug": "upright-row",
+    "alternatives": [
+      "face-pull",
+      "banded-face-pull"
+    ]
+  },
+  "s8": {
+    "guideSlug": "rear-delt-fly",
+    "alternatives": [
+      "reverse-pec-deck",
+      "face-pull"
+    ]
+  },
+  "s9": {
+    "guideSlug": "seated-dumbbell-press",
+    "alternatives": [
+      "arnold-press",
+      "standing-dumbbell-press"
+    ]
+  },
+  "s10": {
+    "guideSlug": "dumbbell-shrug",
+    "alternatives": [
+      "upright-row"
+    ]
+  },
+  "s11": {
+    "guideSlug": "chest-supported-row",
+    "alternatives": [
+      "rear-delt-fly"
+    ]
+  },
+  "bi1": {
+    "guideSlug": "preacher-curl",
+    "alternatives": [
+      "spider-curl",
+      "ez-bar-curl"
+    ]
+  },
+  "bi2": {
+    "guideSlug": "bicep-curl",
+    "alternatives": [
+      "ez-bar-curl",
+      "drag-curl"
+    ]
+  },
+  "bi3": {
+    "guideSlug": "bicep-curl",
+    "alternatives": [
+      "incline-dumbbell-curl",
+      "hammer-curl"
+    ]
+  },
+  "bi4": {
+    "guideSlug": "cable-curl",
+    "alternatives": [
+      "bicep-curl"
+    ]
+  },
+  "bi5": {
+    "guideSlug": "concentration-curl",
+    "alternatives": [
+      "spider-curl",
+      "preacher-curl"
+    ]
+  },
+  "bi6": {
+    "guideSlug": "chin-up",
+    "alternatives": [
+      "pull-up",
+      "bicep-curl"
+    ]
+  },
+  "bi7": {
+    "guideSlug": "hammer-curl",
+    "alternatives": [
+      "rope-hammer-curl",
+      "bicep-curl"
+    ]
+  },
+  "bi8": {
+    "guideSlug": "cable-curl",
+    "alternatives": [
+      "bicep-curl"
+    ]
+  },
+  "bi9": {
+    "guideSlug": "wrist-curl",
+    "alternatives": [
+      "wrist-extension",
+      "reverse-curl"
+    ]
+  },
+  "bi10": {
+    "guideSlug": "preacher-curl",
+    "alternatives": [
+      "spider-curl"
+    ]
+  },
+  "tr1": {
+    "guideSlug": "single-arm-dumbbell-tricep-extension",
+    "alternatives": [
+      "overhead-tricep-extension"
+    ]
+  },
+  "tr2": {
+    "guideSlug": "overhead-tricep-extension",
+    "alternatives": [
+      "close-grip-bench-press"
+    ]
+  },
+  "tr3": {
+    "guideSlug": "overhead-tricep-extension",
+    "alternatives": [
+      "dumbbell-overhead-tricep-extension"
+    ]
+  },
+  "tr4": {
+    "guideSlug": "close-grip-bench-press",
+    "alternatives": [
+      "bench-press",
+      "dip"
+    ]
+  },
+  "tr5": {
+    "guideSlug": "dip",
+    "alternatives": [
+      "chest-dip",
+      "bench-dip",
+      "assisted-dip"
+    ]
+  },
+  "tr6": {
+    "guideSlug": "single-arm-dumbbell-tricep-extension",
+    "alternatives": [
+      "overhead-tricep-extension"
+    ]
+  },
+  "tr7": {
+    "guideSlug": "rope-tricep-pushdown",
+    "alternatives": [
+      "tricep-pushdown"
+    ]
+  },
+  "tr8": {
+    "guideSlug": "tricep-pushdown",
+    "alternatives": [
+      "rope-tricep-pushdown"
+    ]
+  },
+  "tr9": {
+    "guideSlug": "assisted-dip",
+    "alternatives": [
+      "dip",
+      "bench-dip"
+    ]
+  },
+  "tr10": {
+    "guideSlug": "overhead-tricep-extension",
+    "alternatives": [
+      "tricep-pushdown"
+    ]
+  },
+  "ab1": {
+    "guideSlug": "plank",
+    "alternatives": [
+      "side-plank-hip-dip"
+    ]
+  },
+  "ab2": {
+    "guideSlug": "crunch",
+    "alternatives": [
+      "weighted-crunch",
+      "cable-crunch"
+    ]
+  },
+  "ab3": {
+    "guideSlug": "hanging-leg-raise",
+    "alternatives": [
+      "lying-leg-raise"
+    ]
+  },
+  "ab4": {
+    "guideSlug": "side-plank-hip-dip",
+    "alternatives": [
+      "plank"
+    ]
+  },
+  "ab5": {
+    "guideSlug": "ab-wheel",
+    "alternatives": [
+      "crunch"
+    ]
+  },
+  "ab6": {
+    "guideSlug": "reverse-crunch",
+    "alternatives": [
+      "crunch",
+      "hanging-leg-raise"
+    ]
+  },
+  "ab7": {
+    "guideSlug": "crunch",
+    "alternatives": [
+      "weighted-crunch"
+    ]
+  },
+  "ab8": {
+    "guideSlug": "crunch",
+    "alternatives": [
+      "cable-crunch"
+    ]
+  },
+  "ab9": {
+    "guideSlug": "cable-crunch",
+    "alternatives": [
+      "crunch"
+    ]
+  },
+  "ab10": {
+    "guideSlug": "hanging-leg-raise",
+    "alternatives": [
+      "lying-leg-raise"
+    ]
+  }
+};
+
 const DEFAULT_EXERCISES_CATALOG = [
   // --- PIERNA ---
   { id: 'p1', category: 'Pierna', name: 'Leg Curl Sentado', defaultSets: 1, defaultReps: 15, unit: 'reps', guideSlug: 'seated-leg-curl', alternatives: ["lying-leg-curl", "stability-ball-hamstring-curl"] },
@@ -2506,7 +3047,14 @@ async function fetchCatalogFromAPI() {
       const data = await res.json();
       if (data && data.length > 0) {
         DEFAULT_EXERCISES_CATALOG.length = 0;
-        data.forEach(ex => DEFAULT_EXERCISES_CATALOG.push(ex));
+        data.forEach(ex => {
+          const mapped = (typeof DEFAULT_GUIDE_MAPPING !== 'undefined') ? DEFAULT_GUIDE_MAPPING[ex.id] : null;
+          if (mapped) {
+            ex.guideSlug = ex.guideSlug || mapped.guideSlug;
+            ex.alternatives = ex.alternatives || mapped.alternatives;
+          }
+          DEFAULT_EXERCISES_CATALOG.push(ex);
+        });
         localStorage.setItem('gym_catalog_cache', JSON.stringify(DEFAULT_EXERCISES_CATALOG));
         renderCatalog();
         setupCatalogFilter();
@@ -2518,7 +3066,14 @@ async function fetchCatalogFromAPI() {
       try {
         const data = JSON.parse(cached);
         DEFAULT_EXERCISES_CATALOG.length = 0;
-        data.forEach(ex => DEFAULT_EXERCISES_CATALOG.push(ex));
+        data.forEach(ex => {
+          const mapped = (typeof DEFAULT_GUIDE_MAPPING !== 'undefined') ? DEFAULT_GUIDE_MAPPING[ex.id] : null;
+          if (mapped) {
+            ex.guideSlug = ex.guideSlug || mapped.guideSlug;
+            ex.alternatives = ex.alternatives || mapped.alternatives;
+          }
+          DEFAULT_EXERCISES_CATALOG.push(ex);
+        });
       } catch (err) {}
     }
   }
@@ -4581,51 +5136,57 @@ function getGuideExercise(slugOrName) {
     (ex.name && ex.name.toLowerCase() === searchStr)
   );
 
-  if (found) {
-    const manifestItem = (typeof ALL_WORKOUT_GUIDE_CATALOG !== 'undefined')
-      ? ALL_WORKOUT_GUIDE_CATALOG.find(m => m.slug === found.guideSlug)
-      : null;
+  let targetSlug = found ? found.guideSlug : null;
+  let targetAlts = found ? (found.alternatives || []) : [];
 
-    return {
-      name: found.name,
-      category: found.category,
-      slug: found.guideSlug || 'bench-press',
-      equipment: (manifestItem && manifestItem.equipment) || found.equipment || 'General',
-      primaryMuscle: (manifestItem && manifestItem.primaryMuscle) || found.category,
-      secondaryMuscles: (manifestItem && manifestItem.secondaryMuscles) || [],
-      alternatives: found.alternatives || []
-    };
+  // Fallback si no tiene guideSlug (ej. cargado de API sin guideSlug)
+  if (!targetSlug && typeof DEFAULT_GUIDE_MAPPING !== 'undefined') {
+    const mapped = (found && found.id && DEFAULT_GUIDE_MAPPING[found.id]) ||
+                   DEFAULT_GUIDE_MAPPING[searchStr];
+    if (mapped) {
+      targetSlug = mapped.guideSlug;
+      if (!targetAlts.length) targetAlts = mapped.alternatives || [];
+    }
   }
 
-  // 2. Busqueda en los 302 ejercicios de ALL_WORKOUT_GUIDE_CATALOG
-  if (typeof ALL_WORKOUT_GUIDE_CATALOG !== 'undefined') {
+  // Si slugOrName ya es un slug valido directo en ALL_WORKOUT_GUIDE_CATALOG
+  if (!targetSlug && typeof ALL_WORKOUT_GUIDE_CATALOG !== 'undefined') {
+    const directSlugItem = ALL_WORKOUT_GUIDE_CATALOG.find(m => m.slug === searchStr);
+    if (directSlugItem) {
+      targetSlug = directSlugItem.slug;
+    }
+  }
+
+  // 2. Busqueda en los 302 ejercicios de ALL_WORKOUT_GUIDE_CATALOG por nombre
+  if (!targetSlug && typeof ALL_WORKOUT_GUIDE_CATALOG !== 'undefined') {
     let manifestItem = ALL_WORKOUT_GUIDE_CATALOG.find(m =>
-      m.slug === searchStr || m.name.toLowerCase() === searchStr || m.id === searchStr
+      m.name.toLowerCase() === searchStr || m.id === searchStr
     );
     if (!manifestItem) {
       manifestItem = ALL_WORKOUT_GUIDE_CATALOG.find(m => m.name.toLowerCase().includes(searchStr));
     }
     if (manifestItem) {
-      return {
-        name: manifestItem.name,
-        category: manifestItem.primaryMuscle || 'General',
-        slug: manifestItem.slug,
-        equipment: manifestItem.equipment || 'General',
-        primaryMuscle: manifestItem.primaryMuscle || 'General',
-        secondaryMuscles: manifestItem.secondaryMuscles || [],
-        alternatives: []
-      };
+      targetSlug = manifestItem.slug;
     }
   }
 
+  // Si no hay slug mapeado, fallback seguro a bench-press
+  if (!targetSlug) {
+    targetSlug = 'bench-press';
+  }
+
+  const manifestItem = (typeof ALL_WORKOUT_GUIDE_CATALOG !== 'undefined')
+    ? ALL_WORKOUT_GUIDE_CATALOG.find(m => m.slug === targetSlug)
+    : null;
+
   return {
-    name: slugOrName,
-    category: 'General',
-    slug: 'bench-press',
-    equipment: 'General',
-    primaryMuscle: 'General',
-    secondaryMuscles: [],
-    alternatives: []
+    name: (found && found.name) || (manifestItem && manifestItem.name) || slugOrName,
+    category: (found && found.category) || (manifestItem && manifestItem.primaryMuscle) || 'General',
+    slug: targetSlug,
+    equipment: (manifestItem && manifestItem.equipment) || (found && found.equipment) || 'General',
+    primaryMuscle: (manifestItem && manifestItem.primaryMuscle) || (found && found.category) || 'General',
+    secondaryMuscles: (manifestItem && manifestItem.secondaryMuscles) || [],
+    alternatives: targetAlts
   };
 }
 

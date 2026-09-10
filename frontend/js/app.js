@@ -291,7 +291,14 @@ async function fetchCatalogFromAPI() {
       const data = await res.json();
       if (data && data.length > 0) {
         DEFAULT_EXERCISES_CATALOG.length = 0;
-        data.forEach(ex => DEFAULT_EXERCISES_CATALOG.push(ex));
+        data.forEach(ex => {
+          const mapped = (typeof DEFAULT_GUIDE_MAPPING !== 'undefined') ? DEFAULT_GUIDE_MAPPING[ex.id] : null;
+          if (mapped) {
+            ex.guideSlug = ex.guideSlug || mapped.guideSlug;
+            ex.alternatives = ex.alternatives || mapped.alternatives;
+          }
+          DEFAULT_EXERCISES_CATALOG.push(ex);
+        });
         localStorage.setItem('gym_catalog_cache', JSON.stringify(DEFAULT_EXERCISES_CATALOG));
         renderCatalog();
         setupCatalogFilter();
@@ -303,7 +310,14 @@ async function fetchCatalogFromAPI() {
       try {
         const data = JSON.parse(cached);
         DEFAULT_EXERCISES_CATALOG.length = 0;
-        data.forEach(ex => DEFAULT_EXERCISES_CATALOG.push(ex));
+        data.forEach(ex => {
+          const mapped = (typeof DEFAULT_GUIDE_MAPPING !== 'undefined') ? DEFAULT_GUIDE_MAPPING[ex.id] : null;
+          if (mapped) {
+            ex.guideSlug = ex.guideSlug || mapped.guideSlug;
+            ex.alternatives = ex.alternatives || mapped.alternatives;
+          }
+          DEFAULT_EXERCISES_CATALOG.push(ex);
+        });
       } catch (err) {}
     }
   }
@@ -2364,51 +2378,57 @@ function getGuideExercise(slugOrName) {
     (ex.name && ex.name.toLowerCase() === searchStr)
   );
 
-  if (found) {
-    const manifestItem = (typeof ALL_WORKOUT_GUIDE_CATALOG !== 'undefined')
-      ? ALL_WORKOUT_GUIDE_CATALOG.find(m => m.slug === found.guideSlug)
-      : null;
+  let targetSlug = found ? found.guideSlug : null;
+  let targetAlts = found ? (found.alternatives || []) : [];
 
-    return {
-      name: found.name,
-      category: found.category,
-      slug: found.guideSlug || 'bench-press',
-      equipment: (manifestItem && manifestItem.equipment) || found.equipment || 'General',
-      primaryMuscle: (manifestItem && manifestItem.primaryMuscle) || found.category,
-      secondaryMuscles: (manifestItem && manifestItem.secondaryMuscles) || [],
-      alternatives: found.alternatives || []
-    };
+  // Fallback si no tiene guideSlug (ej. cargado de API sin guideSlug)
+  if (!targetSlug && typeof DEFAULT_GUIDE_MAPPING !== 'undefined') {
+    const mapped = (found && found.id && DEFAULT_GUIDE_MAPPING[found.id]) ||
+                   DEFAULT_GUIDE_MAPPING[searchStr];
+    if (mapped) {
+      targetSlug = mapped.guideSlug;
+      if (!targetAlts.length) targetAlts = mapped.alternatives || [];
+    }
   }
 
-  // 2. Busqueda en los 302 ejercicios de ALL_WORKOUT_GUIDE_CATALOG
-  if (typeof ALL_WORKOUT_GUIDE_CATALOG !== 'undefined') {
+  // Si slugOrName ya es un slug valido directo en ALL_WORKOUT_GUIDE_CATALOG
+  if (!targetSlug && typeof ALL_WORKOUT_GUIDE_CATALOG !== 'undefined') {
+    const directSlugItem = ALL_WORKOUT_GUIDE_CATALOG.find(m => m.slug === searchStr);
+    if (directSlugItem) {
+      targetSlug = directSlugItem.slug;
+    }
+  }
+
+  // 2. Busqueda en los 302 ejercicios de ALL_WORKOUT_GUIDE_CATALOG por nombre
+  if (!targetSlug && typeof ALL_WORKOUT_GUIDE_CATALOG !== 'undefined') {
     let manifestItem = ALL_WORKOUT_GUIDE_CATALOG.find(m =>
-      m.slug === searchStr || m.name.toLowerCase() === searchStr || m.id === searchStr
+      m.name.toLowerCase() === searchStr || m.id === searchStr
     );
     if (!manifestItem) {
       manifestItem = ALL_WORKOUT_GUIDE_CATALOG.find(m => m.name.toLowerCase().includes(searchStr));
     }
     if (manifestItem) {
-      return {
-        name: manifestItem.name,
-        category: manifestItem.primaryMuscle || 'General',
-        slug: manifestItem.slug,
-        equipment: manifestItem.equipment || 'General',
-        primaryMuscle: manifestItem.primaryMuscle || 'General',
-        secondaryMuscles: manifestItem.secondaryMuscles || [],
-        alternatives: []
-      };
+      targetSlug = manifestItem.slug;
     }
   }
 
+  // Si no hay slug mapeado, fallback seguro a bench-press
+  if (!targetSlug) {
+    targetSlug = 'bench-press';
+  }
+
+  const manifestItem = (typeof ALL_WORKOUT_GUIDE_CATALOG !== 'undefined')
+    ? ALL_WORKOUT_GUIDE_CATALOG.find(m => m.slug === targetSlug)
+    : null;
+
   return {
-    name: slugOrName,
-    category: 'General',
-    slug: 'bench-press',
-    equipment: 'General',
-    primaryMuscle: 'General',
-    secondaryMuscles: [],
-    alternatives: []
+    name: (found && found.name) || (manifestItem && manifestItem.name) || slugOrName,
+    category: (found && found.category) || (manifestItem && manifestItem.primaryMuscle) || 'General',
+    slug: targetSlug,
+    equipment: (manifestItem && manifestItem.equipment) || (found && found.equipment) || 'General',
+    primaryMuscle: (manifestItem && manifestItem.primaryMuscle) || (found && found.category) || 'General',
+    secondaryMuscles: (manifestItem && manifestItem.secondaryMuscles) || [],
+    alternatives: targetAlts
   };
 }
 

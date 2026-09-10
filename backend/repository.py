@@ -11,6 +11,547 @@ from backend.auth import get_password_hash, verify_password, create_access_token
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DB_FILE = os.path.join(BASE_DIR, "gymtracker.db")
 
+BACKEND_GUIDE_MAPPING = {
+    "p1": {
+        "guideSlug": "seated-leg-curl",
+        "alternatives": [
+            "lying-leg-curl",
+            "stability-ball-hamstring-curl"
+        ]
+    },
+    "p2": {
+        "guideSlug": "leg-extension",
+        "alternatives": [
+            "sissy-squat",
+            "bodyweight-squat"
+        ]
+    },
+    "p3": {
+        "guideSlug": "lying-leg-curl",
+        "alternatives": [
+            "seated-leg-curl",
+            "nordic-hamstring-curl"
+        ]
+    },
+    "p4": {
+        "guideSlug": "leg-press",
+        "alternatives": [
+            "hack-squat",
+            "belt-squat",
+            "squat"
+        ]
+    },
+    "p5": {
+        "guideSlug": "smith-machine-squat",
+        "alternatives": [
+            "squat",
+            "hack-squat",
+            "smith-machine-split-squat"
+        ]
+    },
+    "p6": {
+        "guideSlug": "squat",
+        "alternatives": [
+            "front-squat",
+            "goblet-squat",
+            "smith-machine-squat"
+        ]
+    },
+    "p7": {
+        "guideSlug": "single-leg-romanian-deadlift",
+        "alternatives": [
+            "single-leg-glute-bridge",
+            "rack-pull"
+        ]
+    },
+    "p8": {
+        "guideSlug": "side-lying-leg-raise",
+        "alternatives": [
+            "cossack-squat",
+            "skater-squat"
+        ]
+    },
+    "p9": {
+        "guideSlug": "cossack-squat",
+        "alternatives": [
+            "side-lying-leg-raise"
+        ]
+    },
+    "p10": {
+        "guideSlug": "single-leg-calf-raise",
+        "alternatives": [
+            "leg-press-calf-raise"
+        ]
+    },
+    "p11": {
+        "guideSlug": "split-squat",
+        "alternatives": [
+            "bulgarian-split-squat",
+            "front-foot-elevated-split-squat"
+        ]
+    },
+    "p12": {
+        "guideSlug": "single-leg-glute-bridge",
+        "alternatives": [
+            "cable-pull-through",
+            "glute-focused-back-extension"
+        ]
+    },
+    "p13": {
+        "guideSlug": "single-leg-glute-bridge",
+        "alternatives": [
+            "cable-pull-through"
+        ]
+    },
+    "p14": {
+        "guideSlug": "single-leg-glute-bridge",
+        "alternatives": [
+            "cable-pull-through"
+        ]
+    },
+    "p15": {
+        "guideSlug": "wall-handstand-push-up",
+        "alternatives": [
+            "bodyweight-squat"
+        ]
+    },
+    "p16": {
+        "guideSlug": "single-leg-romanian-deadlift",
+        "alternatives": [
+            "rack-pull",
+            "cable-pull-through"
+        ]
+    },
+    "p17": {
+        "guideSlug": "single-leg-glute-bridge",
+        "alternatives": [
+            "glute-focused-back-extension"
+        ]
+    },
+    "p18": {
+        "guideSlug": "leg-press",
+        "alternatives": [
+            "hack-squat"
+        ]
+    },
+    "p19": {
+        "guideSlug": "bulgarian-split-squat",
+        "alternatives": [
+            "smith-machine-bulgarian-split-squat",
+            "split-squat"
+        ]
+    },
+    "c1": {
+        "guideSlug": "decline-bench-press",
+        "alternatives": [
+            "decline-dumbbell-press",
+            "decline-push-up"
+        ]
+    },
+    "c2": {
+        "guideSlug": "push-up",
+        "alternatives": [
+            "wide-push-up",
+            "incline-push-up",
+            "diamond-push-up"
+        ]
+    },
+    "c3": {
+        "guideSlug": "machine-chest-press",
+        "alternatives": [
+            "bench-press",
+            "incline-dumbbell-press"
+        ]
+    },
+    "c4": {
+        "guideSlug": "incline-bench-press",
+        "alternatives": [
+            "incline-dumbbell-press",
+            "incline-push-up"
+        ]
+    },
+    "c5": {
+        "guideSlug": "bench-press",
+        "alternatives": [
+            "dumbbell-bench-press",
+            "smith-machine-bench-press",
+            "push-up"
+        ]
+    },
+    "c6": {
+        "guideSlug": "cable-fly",
+        "alternatives": [
+            "pec-deck",
+            "push-up"
+        ]
+    },
+    "c7": {
+        "guideSlug": "incline-dumbbell-press",
+        "alternatives": [
+            "incline-bench-press",
+            "decline-dumbbell-press"
+        ]
+    },
+    "c8": {
+        "guideSlug": "pec-deck",
+        "alternatives": [
+            "cable-fly",
+            "machine-chest-press"
+        ]
+    },
+    "c9": {
+        "guideSlug": "machine-chest-press",
+        "alternatives": [
+            "bench-press"
+        ]
+    },
+    "c10": {
+        "guideSlug": "chest-dip",
+        "alternatives": [
+            "dip",
+            "bench-dip",
+            "weighted-dip"
+        ]
+    },
+    "b1": {
+        "guideSlug": "pull-up",
+        "alternatives": [
+            "chin-up",
+            "wide-grip-lat-pulldown",
+            "assisted-pull-up"
+        ]
+    },
+    "b2": {
+        "guideSlug": "lat-pulldown",
+        "alternatives": [
+            "wide-grip-lat-pulldown",
+            "banded-lat-pulldown",
+            "pull-up"
+        ]
+    },
+    "b3": {
+        "guideSlug": "close-grip-lat-pulldown",
+        "alternatives": [
+            "lat-pulldown",
+            "chin-up"
+        ]
+    },
+    "b4": {
+        "guideSlug": "machine-row",
+        "alternatives": [
+            "seated-row",
+            "t-bar-row",
+            "barbell-row"
+        ]
+    },
+    "b5": {
+        "guideSlug": "one-arm-dumbbell-row",
+        "alternatives": [
+            "dumbbell-bent-over-row",
+            "seated-row"
+        ]
+    },
+    "b6": {
+        "guideSlug": "lat-pulldown",
+        "alternatives": [
+            "machine-row"
+        ]
+    },
+    "b7": {
+        "guideSlug": "barbell-row",
+        "alternatives": [
+            "dumbbell-bent-over-row",
+            "pendlay-row",
+            "t-bar-row"
+        ]
+    },
+    "b8": {
+        "guideSlug": "back-extension",
+        "alternatives": [
+            "reverse-hyperextension",
+            "glute-focused-back-extension"
+        ]
+    },
+    "b9": {
+        "guideSlug": "seated-row",
+        "alternatives": [
+            "machine-row",
+            "chest-supported-row"
+        ]
+    },
+    "b10": {
+        "guideSlug": "lat-pulldown",
+        "alternatives": [
+            "wide-grip-lat-pulldown"
+        ]
+    },
+    "s1": {
+        "guideSlug": "machine-shoulder-press",
+        "alternatives": [
+            "overhead-press",
+            "seated-dumbbell-press"
+        ]
+    },
+    "s2": {
+        "guideSlug": "cable-lateral-raise",
+        "alternatives": [
+            "lateral-raise"
+        ]
+    },
+    "s3": {
+        "guideSlug": "overhead-press",
+        "alternatives": [
+            "push-press",
+            "standing-dumbbell-press",
+            "arnold-press"
+        ]
+    },
+    "s4": {
+        "guideSlug": "overhead-press",
+        "alternatives": [
+            "machine-shoulder-press"
+        ]
+    },
+    "s5": {
+        "guideSlug": "lateral-raise",
+        "alternatives": [
+            "cable-lateral-raise"
+        ]
+    },
+    "s6": {
+        "guideSlug": "front-raise",
+        "alternatives": [
+            "lateral-raise"
+        ]
+    },
+    "s7": {
+        "guideSlug": "upright-row",
+        "alternatives": [
+            "face-pull",
+            "banded-face-pull"
+        ]
+    },
+    "s8": {
+        "guideSlug": "rear-delt-fly",
+        "alternatives": [
+            "reverse-pec-deck",
+            "face-pull"
+        ]
+    },
+    "s9": {
+        "guideSlug": "seated-dumbbell-press",
+        "alternatives": [
+            "arnold-press",
+            "standing-dumbbell-press"
+        ]
+    },
+    "s10": {
+        "guideSlug": "dumbbell-shrug",
+        "alternatives": [
+            "upright-row"
+        ]
+    },
+    "s11": {
+        "guideSlug": "chest-supported-row",
+        "alternatives": [
+            "rear-delt-fly"
+        ]
+    },
+    "bi1": {
+        "guideSlug": "preacher-curl",
+        "alternatives": [
+            "spider-curl",
+            "ez-bar-curl"
+        ]
+    },
+    "bi2": {
+        "guideSlug": "bicep-curl",
+        "alternatives": [
+            "ez-bar-curl",
+            "drag-curl"
+        ]
+    },
+    "bi3": {
+        "guideSlug": "bicep-curl",
+        "alternatives": [
+            "incline-dumbbell-curl",
+            "hammer-curl"
+        ]
+    },
+    "bi4": {
+        "guideSlug": "cable-curl",
+        "alternatives": [
+            "bicep-curl"
+        ]
+    },
+    "bi5": {
+        "guideSlug": "concentration-curl",
+        "alternatives": [
+            "spider-curl",
+            "preacher-curl"
+        ]
+    },
+    "bi6": {
+        "guideSlug": "chin-up",
+        "alternatives": [
+            "pull-up",
+            "bicep-curl"
+        ]
+    },
+    "bi7": {
+        "guideSlug": "hammer-curl",
+        "alternatives": [
+            "rope-hammer-curl",
+            "bicep-curl"
+        ]
+    },
+    "bi8": {
+        "guideSlug": "cable-curl",
+        "alternatives": [
+            "bicep-curl"
+        ]
+    },
+    "bi9": {
+        "guideSlug": "wrist-curl",
+        "alternatives": [
+            "wrist-extension",
+            "reverse-curl"
+        ]
+    },
+    "bi10": {
+        "guideSlug": "preacher-curl",
+        "alternatives": [
+            "spider-curl"
+        ]
+    },
+    "tr1": {
+        "guideSlug": "single-arm-dumbbell-tricep-extension",
+        "alternatives": [
+            "overhead-tricep-extension"
+        ]
+    },
+    "tr2": {
+        "guideSlug": "overhead-tricep-extension",
+        "alternatives": [
+            "close-grip-bench-press"
+        ]
+    },
+    "tr3": {
+        "guideSlug": "overhead-tricep-extension",
+        "alternatives": [
+            "dumbbell-overhead-tricep-extension"
+        ]
+    },
+    "tr4": {
+        "guideSlug": "close-grip-bench-press",
+        "alternatives": [
+            "bench-press",
+            "dip"
+        ]
+    },
+    "tr5": {
+        "guideSlug": "dip",
+        "alternatives": [
+            "chest-dip",
+            "bench-dip",
+            "assisted-dip"
+        ]
+    },
+    "tr6": {
+        "guideSlug": "single-arm-dumbbell-tricep-extension",
+        "alternatives": [
+            "overhead-tricep-extension"
+        ]
+    },
+    "tr7": {
+        "guideSlug": "rope-tricep-pushdown",
+        "alternatives": [
+            "tricep-pushdown"
+        ]
+    },
+    "tr8": {
+        "guideSlug": "tricep-pushdown",
+        "alternatives": [
+            "rope-tricep-pushdown"
+        ]
+    },
+    "tr9": {
+        "guideSlug": "assisted-dip",
+        "alternatives": [
+            "dip",
+            "bench-dip"
+        ]
+    },
+    "tr10": {
+        "guideSlug": "overhead-tricep-extension",
+        "alternatives": [
+            "tricep-pushdown"
+        ]
+    },
+    "ab1": {
+        "guideSlug": "plank",
+        "alternatives": [
+            "side-plank-hip-dip"
+        ]
+    },
+    "ab2": {
+        "guideSlug": "crunch",
+        "alternatives": [
+            "weighted-crunch",
+            "cable-crunch"
+        ]
+    },
+    "ab3": {
+        "guideSlug": "hanging-leg-raise",
+        "alternatives": [
+            "lying-leg-raise"
+        ]
+    },
+    "ab4": {
+        "guideSlug": "side-plank-hip-dip",
+        "alternatives": [
+            "plank"
+        ]
+    },
+    "ab5": {
+        "guideSlug": "ab-wheel",
+        "alternatives": [
+            "crunch"
+        ]
+    },
+    "ab6": {
+        "guideSlug": "reverse-crunch",
+        "alternatives": [
+            "crunch",
+            "hanging-leg-raise"
+        ]
+    },
+    "ab7": {
+        "guideSlug": "crunch",
+        "alternatives": [
+            "weighted-crunch"
+        ]
+    },
+    "ab8": {
+        "guideSlug": "crunch",
+        "alternatives": [
+            "cable-crunch"
+        ]
+    },
+    "ab9": {
+        "guideSlug": "cable-crunch",
+        "alternatives": [
+            "crunch"
+        ]
+    },
+    "ab10": {
+        "guideSlug": "hanging-leg-raise",
+        "alternatives": [
+            "lying-leg-raise"
+        ]
+    }
+}
+
 INITIAL_CATALOG_SEED = [
   # --- PIERNA ---
   { "id": 'p1', "category": 'Pierna', "name": 'Leg Curl Sentado', "equipment": 'Máquina', "defaultSets": 1, "defaultReps": 15, "unit": 'reps' },
@@ -314,7 +855,9 @@ class StorageRepository:
                     "defaultSets": ex.default_sets or 1,
                     "defaultReps": ex.default_reps or 12,
                     "unit": ex.weight_unit or "reps",
-                    "imageUrl": ex.image_url
+                    "imageUrl": ex.image_url,
+                    "guideSlug": BACKEND_GUIDE_MAPPING.get(ex.id, {}).get("guideSlug"),
+                    "alternatives": BACKEND_GUIDE_MAPPING.get(ex.id, {}).get("alternatives", [])
                 } for ex in ex_models]
             except Exception as e:
                 print(f"⚠️ Error leyendo ejercicios de Supabase: {e}")
@@ -334,7 +877,9 @@ class StorageRepository:
             "defaultSets": r[4] or 1,
             "defaultReps": r[5] or 12,
             "unit": r[6] or "reps",
-            "imageUrl": r[7]
+            "imageUrl": r[7],
+            "guideSlug": BACKEND_GUIDE_MAPPING.get(r[0], {}).get("guideSlug"),
+            "alternatives": BACKEND_GUIDE_MAPPING.get(r[0], {}).get("alternatives", [])
         } for r in rows]
 
     @staticmethod
