@@ -18,15 +18,18 @@ Usage:
 
 import os
 import sys
+import re
 import time
 import json
 import argparse
+import urllib.parse
 import urllib.request
 import urllib.error
 from datetime import datetime, timezone
 
-# Optional helper to load simple .env files without external dependencies
+
 def load_dotenv_if_exists():
+    """Optional helper to load simple .env files without external dependencies."""
     root_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     env_path = os.path.join(root_dir, ".env")
     if not os.path.exists(env_path):
@@ -47,43 +50,159 @@ def load_dotenv_if_exists():
         print(f"ℹ️ Nota: No se pudo leer archivo .env: {e}")
 
 
+def sanitize_postgres_dsn(dsn: str):
+    """
+    Parses and sanitizes a PostgreSQL connection URL or DSN.
+    Handles:
+      - 'postgres://' vs 'postgresql://'
+      - Passwords enclosed in literal brackets '[...]' (common copy-paste error from Supabase docs)
+      - Passwords containing unencoded special characters ('%', '@', '#', ':', etc.)
+      - Extracts kwargs suitable for direct psycopg2.connect(host=..., port=..., user=..., password=...)
+      - Rebuilds a clean, properly percent-encoded URI suitable for SQLAlchemy / libpq
+    """
+    if not dsn:
+        return None, {}, False
+
+    s = dsn.strip().strip("'\"")
+
+    if "sqlite" in s:
+        return s, {"type": "sqlite"}, False
+
+    # Normalize prefix
+    for prefix in ("postgresql+psycopg2://", "postgresql://", "postgres://"):
+        if s.startswith(prefix):
+            s = s[len(prefix):]
+            break
+
+    # Split credentials from host
+    creds, at, host_part = s.rpartition("@")
+    if not at:
+        return dsn, {}, False
+
+    user, col, password = creds.partition(":")
+    user = user.strip()
+    password = password.strip()
+
+    # Strip literal brackets if user copied [YOUR-PASSWORD] or [MiPassword]
+    if password.startswith("[") and password.endswith("]"):
+        password = password[1:-1].strip()
+
+    is_placeholder = password.upper() in (
+        "YOUR-PASSWORD", "PASSWORD", "<YOUR-PASSWORD>", "[YOUR-PASSWORD]", ""
+    )
+
+    # Host, port, path, query
+    host_port, slash, path_query = host_part.partition("/")
+    path, q, query_str = path_query.partition("?")
+    dbname = path.strip() or "postgres"
+
+    if ":" in host_port:
+        host, _, port_str = host_port.partition(":")
+        port = int(port_str) if port_str.isdigit() else 5432
+    else:
+        host = host_port
+        port = 5432
+
+    # Query params (sslmode)
+    sslmode = "require"
+    if query_str:
+        params = urllib.parse.parse_qs(query_str)
+        if "sslmode" in params:
+            sslmode = params["sslmode"][0]
+
+    # Handle unencoded or partially encoded characters
+    has_invalid_pct = bool(re.search(r"%(?![0-9a-fA-F]{2})", password))
+    if has_invalid_pct:
+        raw_password = password
+    else:
+        try:
+            raw_password = urllib.parse.unquote(password)
+        except Exception:
+            raw_password = password
+
+    encoded_password = urllib.parse.quote(raw_password, safe="")
+    encoded_user = urllib.parse.quote(user, safe="")
+    clean_uri = f"postgresql://{encoded_user}:{encoded_password}@{host}:{port}/{dbname}?sslmode={sslmode}"
+
+    conn_kwargs = {
+        "host": host,
+        "port": port,
+        "dbname": dbname,
+        "user": user,
+        "password": raw_password,
+        "sslmode": sslmode
+    }
+
+    return clean_uri, conn_kwargs, is_placeholder
+
+
 def ping_postgres_direct(db_url: str) -> dict:
     """Connect directly to PostgreSQL via psycopg2 or sqlalchemy and run SELECT 1."""
-    if db_url.startswith("postgres://"):
-        db_url = db_url.replace("postgres://", "postgresql://", 1)
+    clean_uri, conn_kwargs, is_placeholder = sanitize_postgres_dsn(db_url)
+
+    if is_placeholder:
+        return {
+            "method": "PostgreSQL Direct",
+            "success": False,
+            "latency_ms": 0,
+            "error": (
+                "⚠️ Detectamos que DATABASE_URL contiene el placeholder '[YOUR-PASSWORD]'. "
+                "Debes reemplazarlo por tu contraseña real de Supabase en GitHub Secrets."
+            )
+        }
 
     start_time = time.time()
 
-    # Try psycopg2 first
-    try:
-        import psycopg2
-        conn = psycopg2.connect(db_url, connect_timeout=15)
-        cur = conn.cursor()
-        cur.execute("SELECT 1;")
-        res = cur.fetchone()
-        cur.close()
-        conn.close()
-        latency_ms = round((time.time() - start_time) * 1000, 2)
-        return {
-            "method": "PostgreSQL Direct (psycopg2)",
-            "success": res[0] == 1,
-            "latency_ms": latency_ms,
-            "details": f"Query 'SELECT 1;' ejecutado con éxito ({latency_ms} ms)."
-        }
-    except ImportError:
-        pass
-    except Exception as e:
-        return {
-            "method": "PostgreSQL Direct (psycopg2)",
-            "success": False,
-            "latency_ms": round((time.time() - start_time) * 1000, 2),
-            "error": str(e)
-        }
+    # 1. Intentar primero con psycopg2 usando kwargs directos
+    # Al pasar host, port, dbname, user, password como kwargs independientes,
+    # libpq usa PQconnectdbParams y NO realiza decodificación de URI,
+    # evitando por completo el error 'invalid dsn: invalid percent-encoded token'.
+    if conn_kwargs and conn_kwargs.get("host"):
+        try:
+            import psycopg2
+            try:
+                conn = psycopg2.connect(**conn_kwargs, connect_timeout=15)
+            except Exception as e_first:
+                # Si falla por autenticación y la contraseña original tenía %, probar con contraseña alternativa
+                if "authentication failed" in str(e_first).lower() and "%" in db_url:
+                    alt_kwargs = dict(conn_kwargs)
+                    alt_kwargs["password"] = urllib.parse.unquote(conn_kwargs["password"])
+                    conn = psycopg2.connect(**alt_kwargs, connect_timeout=15)
+                else:
+                    raise e_first
 
-    # Fallback to SQLAlchemy
+            cur = conn.cursor()
+            cur.execute("SELECT 1;")
+            res = cur.fetchone()
+            cur.close()
+            conn.close()
+            latency_ms = round((time.time() - start_time) * 1000, 2)
+            return {
+                "method": "PostgreSQL Direct (psycopg2 params)",
+                "success": res[0] == 1,
+                "latency_ms": latency_ms,
+                "details": f"Query 'SELECT 1;' ejecutado con éxito ({latency_ms} ms)."
+            }
+        except ImportError:
+            pass
+        except Exception as e:
+            err_msg = str(e)
+            if "authentication failed" in err_msg.lower():
+                err_msg += " (Verifica que la contraseña configurada en DATABASE_URL sea correcta)."
+            elif "timeout" in err_msg.lower():
+                err_msg += " (Tiempo de espera agotado al conectar a Supabase)."
+            return {
+                "method": "PostgreSQL Direct (psycopg2)",
+                "success": False,
+                "latency_ms": round((time.time() - start_time) * 1000, 2),
+                "error": err_msg
+            }
+
+    # 2. Fallback a SQLAlchemy con clean_uri (garantizada con percent-encoding válido)
+    target_uri = clean_uri or db_url
     try:
         from sqlalchemy import create_engine, text
-        engine = create_engine(db_url, pool_pre_ping=True)
+        engine = create_engine(target_uri, pool_pre_ping=True)
         with engine.connect() as connection:
             res = connection.execute(text("SELECT 1;")).scalar()
         latency_ms = round((time.time() - start_time) * 1000, 2)
@@ -94,18 +213,20 @@ def ping_postgres_direct(db_url: str) -> dict:
             "details": f"Query 'SELECT 1;' ejecutado con éxito ({latency_ms} ms)."
         }
     except Exception as e:
+        err_msg = str(e)
+        if "authentication failed" in err_msg.lower():
+            err_msg += " (Verifica que la contraseña configurada en DATABASE_URL sea correcta)."
         return {
             "method": "PostgreSQL Direct (SQLAlchemy)",
             "success": False,
             "latency_ms": round((time.time() - start_time) * 1000, 2),
-            "error": str(e)
+            "error": err_msg
         }
 
 
 def ping_supabase_rest(supabase_url: str, supabase_key: str) -> dict:
     """Ping Supabase PostgREST API with standard library urllib."""
     clean_url = supabase_url.rstrip("/")
-    # Target either exercises table or the root rest endpoint
     endpoint = f"{clean_url}/rest/v1/exercises?select=id&limit=1"
 
     req = urllib.request.Request(endpoint, headers={
@@ -117,7 +238,6 @@ def ping_supabase_rest(supabase_url: str, supabase_key: str) -> dict:
     start_time = time.time()
     try:
         with urllib.request.urlopen(req, timeout=15) as resp:
-            data = resp.read()
             latency_ms = round((time.time() - start_time) * 1000, 2)
             return {
                 "method": "Supabase REST API (PostgREST)",
@@ -126,7 +246,6 @@ def ping_supabase_rest(supabase_url: str, supabase_key: str) -> dict:
                 "details": f"HTTP {resp.status} OK recibido ({latency_ms} ms)."
             }
     except urllib.error.HTTPError as e:
-        # Even a 401 or 404 from Supabase still registers incoming HTTP traffic on Supabase server
         latency_ms = round((time.time() - start_time) * 1000, 2)
         return {
             "method": "Supabase REST API (PostgREST)",
@@ -193,7 +312,7 @@ def main():
     results = []
 
     # 1. Direct PostgreSQL Ping
-    if args.db and ("supabase" in args.db or "postgres" in args.db):
+    if args.db and not args.db.startswith("sqlite"):
         print("\n🔹 [1/3] Ejecutando ping directo a PostgreSQL...")
         res = ping_postgres_direct(args.db)
         results.append(res)
