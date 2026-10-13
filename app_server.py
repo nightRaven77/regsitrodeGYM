@@ -1,12 +1,13 @@
-from backend.repository import StorageRepository
 import os
 import json
+import asyncio
 from typing import Optional, List, Dict, Any
 from fastapi import FastAPI, HTTPException, Depends
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from pydantic import BaseModel
+from backend.repository import StorageRepository
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
@@ -41,6 +42,41 @@ except Exception as e:
 
 # Initialize local SQLite fallback tables
 StorageRepository.init_sqlite_db()
+
+
+async def auto_ping_background_worker():
+    """
+    Background worker that runs periodically while the server is alive
+    to execute a keepalive query on Supabase PostgreSQL.
+    Prevents automatic project pausing due to inactivity.
+    """
+    # Wait 60 seconds after server startup before initial background ping
+    await asyncio.sleep(60)
+    while True:
+        try:
+            if HAS_SUPABASE:
+                try:
+                    from backend.database import SessionLocal
+                    db_session = SessionLocal()
+                    try:
+                        res = StorageRepository.ping_database(db=db_session, has_supabase=True)
+                        print(f"🏓 [Supabase Keepalive] Ping automático ejecutado con éxito: {res.get('status')}")
+                    finally:
+                        db_session.close()
+                except Exception as ping_err:
+                    print(f"⚠️ [Supabase Keepalive] Error en ping automático: {ping_err}")
+            # Ping every 24 hours (86400 seconds)
+            await asyncio.sleep(86400)
+        except asyncio.CancelledError:
+            break
+        except Exception as e:
+            print(f"⚠️ [Supabase Keepalive] Excepción en worker: {e}")
+            await asyncio.sleep(3600)
+
+
+@app.on_event("startup")
+async def start_keepalive_worker():
+    asyncio.create_task(auto_ping_background_worker())
 
 # --- Pydantic Schemas ---
 
@@ -132,13 +168,26 @@ def login_user(payload: UserLoginSchema, db: Any = Depends(get_db)):
     )
 
 
+@app.get("/api/ping")
+def ping_keepalive(db: Any = Depends(get_db)):
+    """
+    Keep-alive endpoint to register active database queries on Supabase PostgreSQL.
+    Prevents Supabase free tier inactivity auto-pause (7-day threshold).
+    Can be polled by external services (cron-job.org, UptimeRobot) or GitHub Actions.
+    """
+    return StorageRepository.ping_database(db=db, has_supabase=HAS_SUPABASE)
+
+
 @app.get("/api/health")
-def health_check():
-    return {
+def health_check(check_db: bool = False, db: Any = Depends(get_db)):
+    health_info = {
         "status": "online",
         "app": "My Gym Tracker App API v2.0",
         "primary_database": "Supabase PostgreSQL" if (HAS_SUPABASE and os.environ.get("DATABASE_URL")) else "SQLite Local Fallback"
     }
+    if check_db:
+        health_info["database_ping"] = StorageRepository.ping_database(db=db, has_supabase=HAS_SUPABASE)
+    return health_info
 
 # --- State Sync & Fetch Endpoints ---
 

@@ -91,6 +91,40 @@ Para conectar tu instancia en producción con **Supabase PostgreSQL**:
 
 ---
 
+## 🏓 Mantener Vivo Supabase (Evitar Pausa por Inactividad)
+
+Supabase pausa los proyectos gratuitos tras **7 días sin consultas o actividad**. Para evitarlo de manera 100% automatizada, el proyecto incluye un sistema multicapa de **Keep-Alive**:
+
+### Opción 1: GitHub Actions (Recomendada y 100% Automatizada)
+El repositorio incluye el workflow [`.github/workflows/supabase-keepalive.yml`](file:///.github/workflows/supabase-keepalive.yml) que se ejecuta **cada 3 días** a las 05:00 UTC:
+1. En GitHub, ve a **Settings** -> **Secrets and variables** -> **Actions**.
+2. Agrega un nuevo Secret:
+   - `DATABASE_URL`: tu URI de conexión de Supabase.
+   - *(Opcional)* `APP_URL`: la URL de tu app en Render/Railway (ej: `https://mi-gym.onrender.com`).
+3. ¡Listo! Puedes probarlo manualmente en cualquier momento desde la pestaña **Actions** -> **Supabase Keep-Alive Ping** -> **Run workflow**.
+
+### Opción 2: Webhook / Monitor Gratuito (cron-job.org o UptimeRobot)
+Si tienes la app desplegada en Render o Railway, puedes usar servicios gratuitos como [cron-job.org](https://cron-job.org) o [UptimeRobot](https://uptimerobot.com) para hacer ping al endpoint:
+```http
+GET https://tu-app.onrender.com/api/ping
+```
+Esto despierta tu servidor y ejecuta una consulta SQL (`SELECT 1;`) en Supabase en una sola petición.
+
+### Opción 3: Script Manual o Cron Local
+Puedes ejecutar directamente el script de keep-alive:
+```bash
+python3 scripts/ping_supabase.py
+```
+O pasando tus credenciales por línea de comandos:
+```bash
+python3 scripts/ping_supabase.py --db "postgresql://..." --app "https://..."
+```
+
+### Opción 4: Tarea en Segundo Plano Integrada
+Mientras el servidor FastAPI (`app_server.py`) esté en ejecución, un worker en segundo plano realiza un ping a Supabase automáticamente cada 24 horas.
+
+---
+
 ## 🚀 Cómo Ejecutar en Local
 
 ### 1. Iniciar Servidor FastAPI

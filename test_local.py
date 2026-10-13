@@ -42,6 +42,11 @@ try:
     req = urllib.request.urlopen("http://localhost:8000/api/health", timeout=2)
     data = json.loads(req.read().decode('utf-8'))
     print(f"  ✅ Respuesta API Health Check: {data}")
+    
+    # Also verify keep-alive ping endpoint
+    req_ping = urllib.request.urlopen("http://localhost:8000/api/ping", timeout=2)
+    ping_data = json.loads(req_ping.read().decode('utf-8'))
+    print(f"  🏓 Respuesta API Ping Keep-Alive: {ping_data.get('message')} (DB: {ping_data.get('primary_database')})")
 except Exception as e:
     print(f"  ℹ️ Servidor en local no iniciado aún (ejecuta 'python3 main.py' para probar la API).")
 

@@ -55,3 +55,8 @@ ehthumbs.db
 
 # Antigravity artifacts (local only)
 .gemini/
+
+# Environment files
+.env
+.env.*
+!.env.example

@@ -19,6 +19,25 @@ def test_health_endpoint():
     assert "My Gym Tracker App API" in json_data["app"]
 
 
+def test_health_endpoint_with_check_db():
+    response = client.get("/api/health?check_db=true")
+    assert response.status_code == 200
+    json_data = response.json()
+    assert json_data["status"] == "online"
+    assert "database_ping" in json_data
+    assert json_data["database_ping"]["status"] == "online"
+
+
+def test_ping_keepalive_endpoint():
+    response = client.get("/api/ping")
+    assert response.status_code == 200
+    json_data = response.json()
+    assert json_data["status"] == "online"
+    assert "details" in json_data
+    assert "keepalive_success" in json_data
+    assert json_data["keepalive_success"] is True
+
+
 def test_state_endpoint_fallback():
     response = client.get("/api/state/test_profile_id")
     assert response.status_code == 200

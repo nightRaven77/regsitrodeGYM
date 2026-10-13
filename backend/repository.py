@@ -1214,3 +1214,56 @@ class StorageRepository:
             print(f"ℹ️ SQLite profile update error: {e}")
 
         return {"status": "updated", "user": updated_user}
+
+    @staticmethod
+    def ping_database(db: Optional[Session] = None, has_supabase: bool = False) -> Dict[str, Any]:
+        """
+        Executes a lightweight query (SELECT 1) on Supabase PostgreSQL or local SQLite
+        to register database activity and prevent Supabase free tier inactivity auto-pause.
+        """
+        import time
+        from datetime import datetime, timezone
+        from sqlalchemy import text
+
+        start_time = time.time()
+        supabase_ping_ok = False
+        details: Dict[str, Any] = {}
+
+        if has_supabase and db is not None:
+            try:
+                # Direct SQL execution registers activity in Supabase PostgreSQL
+                res = db.execute(text("SELECT 1")).scalar()
+                latency_ms = round((time.time() - start_time) * 1000, 2)
+                supabase_ping_ok = (res == 1)
+                details["supabase"] = {
+                    "status": "connected" if supabase_ping_ok else "unexpected_result",
+                    "latency_ms": latency_ms,
+                    "target": "Supabase PostgreSQL"
+                }
+            except Exception as e:
+                details["supabase"] = {
+                    "status": "error",
+                    "error": str(e)
+                }
+
+        # Check SQLite fallback as well
+        try:
+            conn = sqlite3.connect(DB_FILE)
+            cur = conn.cursor()
+            cur.execute("SELECT 1")
+            cur.fetchone()
+            conn.close()
+            details["sqlite"] = {"status": "connected"}
+        except Exception as e:
+            details["sqlite"] = {"status": "error", "error": str(e)}
+
+        is_healthy = supabase_ping_ok or (not has_supabase and details.get("sqlite", {}).get("status") == "connected")
+
+        return {
+            "status": "online" if is_healthy else "degraded",
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "keepalive_success": supabase_ping_ok or (not has_supabase),
+            "primary_database": "Supabase PostgreSQL" if (has_supabase and supabase_ping_ok) else "SQLite Local Fallback",
+            "details": details,
+            "message": "🏓 Ping exitoso. Actividad registrada en base de datos." if is_healthy else "⚠️ Error al registrar ping en base de datos."
+        }
