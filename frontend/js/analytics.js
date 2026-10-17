@@ -133,6 +133,7 @@ function renderAnalyticsDashboard() {
     renderOverloadChart(selectedExName);
     renderWeeklyVolumeChart();
     renderMuscleDistributionChart();
+    renderMuscleHeatmap();
   } catch (err) {
     console.error('Error rendering analytics dashboard:', err);
   }
@@ -377,3 +378,175 @@ function renderMuscleDistributionChart() {
     }
   });
 }
+
+// 5. Interactive Anatomical SVG Muscle Heatmap (Front & Back Silhouette)
+function renderMuscleHeatmap() {
+  const container = document.getElementById('muscleHeatmapContainer');
+  if (!container) return;
+
+  const muscleCounts = {
+    'Pierna': 0, 'Pectoral': 0, 'Espalda': 0, 'Hombro': 0, 'Bíceps': 0, 'Tríceps': 0, 'Abdomen': 0
+  };
+  const filteredHistory = getFilteredWorkoutHistory();
+
+  filteredHistory.forEach(record => {
+    if (record.detailedExercises) {
+      record.detailedExercises.forEach(ex => {
+        if (muscleCounts[ex.category] !== undefined) {
+          const effectiveSets = (ex.sets || []).filter(s => s.setType !== 'W');
+          muscleCounts[ex.category] += effectiveSets.length;
+        }
+      });
+    }
+  });
+
+  const maxSets = Math.max(1, ...Object.values(muscleCounts));
+
+  const getHeatStyle = (cat) => {
+    const sets = muscleCounts[cat] || 0;
+    if (sets === 0) {
+      return {
+        fill: 'rgba(255, 255, 255, 0.08)',
+        stroke: 'rgba(255, 255, 255, 0.22)',
+        glow: 'none'
+      };
+    }
+    const ratio = Math.min(1, sets / Math.max(8, maxSets));
+    if (ratio >= 0.65) {
+      return {
+        fill: 'rgba(0, 230, 118, 0.75)',
+        stroke: '#00e676',
+        glow: 'drop-shadow(0 0 8px rgba(0, 230, 118, 0.65))'
+      };
+    }
+    if (ratio >= 0.3) {
+      return {
+        fill: 'rgba(0, 242, 254, 0.65)',
+        stroke: '#00f2fe',
+        glow: 'drop-shadow(0 0 6px rgba(0, 242, 254, 0.55))'
+      };
+    }
+    return {
+      fill: 'rgba(79, 172, 254, 0.45)',
+      stroke: '#4facfe',
+      glow: 'none'
+    };
+  };
+
+  const pec = getHeatStyle('Pectoral');
+  const sho = getHeatStyle('Hombro');
+  const bic = getHeatStyle('Bíceps');
+  const abd = getHeatStyle('Abdomen');
+  const leg = getHeatStyle('Pierna');
+  const esp = getHeatStyle('Espalda');
+  const tri = getHeatStyle('Tríceps');
+
+  const badgesHtml = Object.keys(muscleCounts).map(cat => {
+    const count = muscleCounts[cat];
+    const activeColor = count > 0 ? 'var(--accent-cyan)' : 'var(--text-muted)';
+    return `<span class="badge badge-${escapeAnalyticsHTML(cat.toLowerCase())}" style="font-size: 10px; opacity: ${count > 0 ? '1' : '0.55'};">
+      ${escapeAnalyticsHTML(cat)}: <strong style="color: ${activeColor};">${count} series</strong>
+    </span>`;
+  }).join('');
+
+  container.innerHTML = `
+    <div class="muscle-heatmap-wrapper">
+      <!-- ANTERIOR (FRONT) -->
+      <div style="text-align: center; width: 100%;">
+        <div style="font-size: 11px; font-weight: 700; color: var(--text-muted); margin-bottom: 4px; text-transform: uppercase;">Vista Frontal</div>
+        <svg class="body-svg-figure" viewBox="0 0 120 220" role="img" aria-label="Mapa muscular frontal">
+          <!-- Head & Neck -->
+          <circle cx="60" cy="20" r="12" fill="rgba(255,255,255,0.12)" stroke="rgba(255,255,255,0.25)" stroke-width="1.2"/>
+          <rect x="55" y="32" width="10" height="7" rx="2" fill="rgba(255,255,255,0.12)"/>
+
+          <!-- Hombro (Deltoids Front) -->
+          <g class="muscle-zone" data-muscle="Hombro" style="filter: ${sho.glow};">
+            <title>Hombro: ${muscleCounts['Hombro']} series efectivas</title>
+            <ellipse cx="34" cy="48" rx="9" ry="11" fill="${sho.fill}" stroke="${sho.stroke}" stroke-width="1.5"/>
+            <ellipse cx="86" cy="48" rx="9" ry="11" fill="${sho.fill}" stroke="${sho.stroke}" stroke-width="1.5"/>
+          </g>
+
+          <!-- Pectoral (Chest) -->
+          <g class="muscle-zone" data-muscle="Pectoral" style="filter: ${pec.glow};">
+            <title>Pectoral: ${muscleCounts['Pectoral']} series efectivas</title>
+            <path d="M42 41 Q60 44 60 58 Q45 60 41 50 Z" fill="${pec.fill}" stroke="${pec.stroke}" stroke-width="1.5"/>
+            <path d="M78 41 Q60 44 60 58 Q75 60 79 50 Z" fill="${pec.fill}" stroke="${pec.stroke}" stroke-width="1.5"/>
+          </g>
+
+          <!-- Bíceps (Arms Front) -->
+          <g class="muscle-zone" data-muscle="Bíceps" style="filter: ${bic.glow};">
+            <title>Bíceps: ${muscleCounts['Bíceps']} series efectivas</title>
+            <rect x="24" y="60" width="11" height="26" rx="5" fill="${bic.fill}" stroke="${bic.stroke}" stroke-width="1.5"/>
+            <rect x="85" y="60" width="11" height="26" rx="5" fill="${bic.fill}" stroke="${bic.stroke}" stroke-width="1.5"/>
+          </g>
+          <!-- Forearms -->
+          <rect x="21" y="88" width="9" height="24" rx="4" fill="rgba(255,255,255,0.08)" stroke="rgba(255,255,255,0.18)"/>
+          <rect x="90" y="88" width="9" height="24" rx="4" fill="rgba(255,255,255,0.08)" stroke="rgba(255,255,255,0.18)"/>
+
+          <!-- Abdomen (Core / Abs) -->
+          <g class="muscle-zone" data-muscle="Abdomen" style="filter: ${abd.glow};">
+            <title>Abdomen: ${muscleCounts['Abdomen']} series efectivas</title>
+            <rect x="46" y="61" width="28" height="42" rx="6" fill="${abd.fill}" stroke="${abd.stroke}" stroke-width="1.5"/>
+            <line x1="60" y1="63" x2="60" y2="101" stroke="rgba(9,13,22,0.5)" stroke-width="1.2"/>
+            <line x1="48" y1="74" x2="72" y2="74" stroke="rgba(9,13,22,0.5)" stroke-width="1.2"/>
+            <line x1="48" y1="87" x2="72" y2="87" stroke="rgba(9,13,22,0.5)" stroke-width="1.2"/>
+          </g>
+
+          <!-- Pierna (Quads & Calves Front) -->
+          <g class="muscle-zone" data-muscle="Pierna" style="filter: ${leg.glow};">
+            <title>Pierna: ${muscleCounts['Pierna']} series efectivas</title>
+            <rect x="42" y="107" width="15" height="52" rx="7" fill="${leg.fill}" stroke="${leg.stroke}" stroke-width="1.5"/>
+            <rect x="63" y="107" width="15" height="52" rx="7" fill="${leg.fill}" stroke="${leg.stroke}" stroke-width="1.5"/>
+            <rect x="44" y="163" width="12" height="42" rx="5" fill="${leg.fill}" stroke="${leg.stroke}" stroke-width="1.3"/>
+            <rect x="64" y="163" width="12" height="42" rx="5" fill="${leg.fill}" stroke="${leg.stroke}" stroke-width="1.3"/>
+          </g>
+        </svg>
+      </div>
+
+      <!-- POSTERIOR (BACK) -->
+      <div style="text-align: center; width: 100%;">
+        <div style="font-size: 11px; font-weight: 700; color: var(--text-muted); margin-bottom: 4px; text-transform: uppercase;">Vista Posterior</div>
+        <svg class="body-svg-figure" viewBox="0 0 120 220" role="img" aria-label="Mapa muscular posterior">
+          <!-- Head & Neck -->
+          <circle cx="60" cy="20" r="12" fill="rgba(255,255,255,0.12)" stroke="rgba(255,255,255,0.25)" stroke-width="1.2"/>
+          <rect x="55" y="32" width="10" height="7" rx="2" fill="rgba(255,255,255,0.12)"/>
+
+          <!-- Hombro Posterior -->
+          <g class="muscle-zone" data-muscle="Hombro" style="filter: ${sho.glow};">
+            <title>Hombro: ${muscleCounts['Hombro']} series efectivas</title>
+            <ellipse cx="34" cy="48" rx="9" ry="11" fill="${sho.fill}" stroke="${sho.stroke}" stroke-width="1.5"/>
+            <ellipse cx="86" cy="48" rx="9" ry="11" fill="${sho.fill}" stroke="${sho.stroke}" stroke-width="1.5"/>
+          </g>
+
+          <!-- Espalda (Lats, Traps & Lower Back) -->
+          <g class="muscle-zone" data-muscle="Espalda" style="filter: ${esp.glow};">
+            <title>Espalda: ${muscleCounts['Espalda']} series efectivas</title>
+            <polygon points="41,41 79,41 73,101 47,101" fill="${esp.fill}" stroke="${esp.stroke}" stroke-width="1.5" stroke-linejoin="round"/>
+            <line x1="60" y1="42" x2="60" y2="100" stroke="rgba(9,13,22,0.5)" stroke-width="1.4"/>
+          </g>
+
+          <!-- Tríceps (Arms Back) -->
+          <g class="muscle-zone" data-muscle="Tríceps" style="filter: ${tri.glow};">
+            <title>Tríceps: ${muscleCounts['Tríceps']} series efectivas</title>
+            <rect x="24" y="60" width="11" height="26" rx="5" fill="${tri.fill}" stroke="${tri.stroke}" stroke-width="1.5"/>
+            <rect x="85" y="60" width="11" height="26" rx="5" fill="${tri.fill}" stroke="${tri.stroke}" stroke-width="1.5"/>
+          </g>
+          <!-- Forearms -->
+          <rect x="21" y="88" width="9" height="24" rx="4" fill="rgba(255,255,255,0.08)" stroke="rgba(255,255,255,0.18)"/>
+          <rect x="90" y="88" width="9" height="24" rx="4" fill="rgba(255,255,255,0.08)" stroke="rgba(255,255,255,0.18)"/>
+
+          <!-- Pierna Posterior (Glutes, Hamstrings & Calves) -->
+          <g class="muscle-zone" data-muscle="Pierna" style="filter: ${leg.glow};">
+            <title>Pierna: ${muscleCounts['Pierna']} series efectivas</title>
+            <rect x="42" y="105" width="16" height="54" rx="7" fill="${leg.fill}" stroke="${leg.stroke}" stroke-width="1.5"/>
+            <rect x="62" y="105" width="16" height="54" rx="7" fill="${leg.fill}" stroke="${leg.stroke}" stroke-width="1.5"/>
+            <rect x="44" y="163" width="12" height="42" rx="5" fill="${leg.fill}" stroke="${leg.stroke}" stroke-width="1.3"/>
+            <rect x="64" y="163" width="12" height="42" rx="5" fill="${leg.fill}" stroke="${leg.stroke}" stroke-width="1.3"/>
+          </g>
+        </svg>
+      </div>
+    </div>
+    <div class="heatmap-muscle-badges">${badgesHtml}</div>
+  `;
+}
+

@@ -1531,27 +1531,7 @@ function renderLiveExercisesCards() {
 
     liveExercisesContainer.appendChild(card);
     const setsContainer = card.querySelector(`#setsContainer_${ex.id}`);
-
-    // Completed Exercise Accordion Summary Badge
-    if (allDone) {
-      const summaryBadge = document.createElement('div');
-      summaryBadge.className = 'completed-exercise-summary-badge';
-      summaryBadge.style.cssText = 'background: rgba(0, 230, 118, 0.08); border: 1px solid var(--accent-green); padding: 8px 12px; border-radius: var(--radius-sm); font-size: 12px; display: flex; justify-content: space-between; align-items: center; cursor: pointer; color: #fff; margin-bottom: 8px;';
-      summaryBadge.innerHTML = `
-        <span>✅ <strong>${escapeHTML(ex.name)}</strong> • ${sets.length}/${sets.length} series completadas</span>
-        <span class="toggle-summary-icon" style="color: var(--accent-green); font-weight: 700; font-size: 11px;">Ver Series ▾</span>
-      `;
-
-      setsContainer.style.display = 'none';
-
-      summaryBadge.onclick = () => {
-        const isHidden = setsContainer.style.display === 'none';
-        setsContainer.style.display = isHidden ? 'block' : 'none';
-        summaryBadge.querySelector('.toggle-summary-icon').textContent = isHidden ? 'Ocultar ▲' : 'Ver Series ▾';
-      };
-
-      card.insertBefore(summaryBadge, setsContainer);
-    }
+    const noteContainer = noteInput ? noteInput.parentElement : null;
 
     sets.forEach(set => {
       const weightVal = set.weight || 0;
@@ -1650,31 +1630,33 @@ function renderLiveExercisesCards() {
 
       const weightStep = unit === 'lb' ? 5 : 2.5;
 
-      btnWeightMinus.onclick = () => {
+      const doWeightMinus = () => {
         set.weight = Math.max(0, parseFloat((set.weight - weightStep).toFixed(1)));
         weightInput.value = set.weight;
         updateConversion(set.weight);
         saveActiveSession(true);
       };
-
-      btnWeightPlus.onclick = () => {
+      const doWeightPlus = () => {
         set.weight = parseFloat((set.weight + weightStep).toFixed(1));
         weightInput.value = set.weight;
         updateConversion(set.weight);
         saveActiveSession(true);
       };
-
-      btnRepsMinus.onclick = () => {
+      const doRepsMinus = () => {
         set.actualReps = Math.max(0, set.actualReps - 1);
         repsInput.value = set.actualReps;
         saveActiveSession(true);
       };
-
-      btnRepsPlus.onclick = () => {
+      const doRepsPlus = () => {
         set.actualReps = set.actualReps + 1;
         repsInput.value = set.actualReps;
         saveActiveSession(true);
       };
+
+      attachStepperHold(btnWeightMinus, doWeightMinus);
+      attachStepperHold(btnWeightPlus, doWeightPlus);
+      attachStepperHold(btnRepsMinus, doRepsMinus);
+      attachStepperHold(btnRepsPlus, doRepsPlus);
 
       weightInput.addEventListener('input', (e) => {
         set.weight = parseFloat(e.target.value) || 0;
@@ -1766,9 +1748,64 @@ function renderLiveExercisesCards() {
     }
 
     card.appendChild(controlsBar);
+
+    // Completed Exercise Compact Accordion Summary Badge (hides note, sets, and controlsBar until tapped)
+    if (allDone) {
+      const maxSetWeight = Math.max(0, ...sets.map(s => s.weight || 0));
+      const summaryBadge = document.createElement('div');
+      summaryBadge.className = 'completed-exercise-summary-badge';
+      summaryBadge.style.cssText = 'background: rgba(0, 230, 118, 0.08); border: 1px solid var(--accent-green); padding: 8px 12px; border-radius: var(--radius-sm); font-size: 12px; display: flex; justify-content: space-between; align-items: center; cursor: pointer; color: #fff; margin-top: 4px;';
+      summaryBadge.innerHTML = `
+        <span>✅ <strong>${sets.length}/${sets.length} series listas</strong> • Mejor: ${maxSetWeight} ${escapeHTML(unit)}</span>
+        <span class="toggle-summary-icon" style="color: var(--accent-green); font-weight: 700; font-size: 11px;">Expandir ▾</span>
+      `;
+
+      setsContainer.style.display = 'none';
+      controlsBar.style.display = 'none';
+      if (noteContainer) noteContainer.style.display = 'none';
+
+      summaryBadge.onclick = () => {
+        const isHidden = setsContainer.style.display === 'none';
+        setsContainer.style.display = isHidden ? 'block' : 'none';
+        controlsBar.style.display = isHidden ? 'flex' : 'none';
+        if (noteContainer) noteContainer.style.display = isHidden ? 'block' : 'none';
+        summaryBadge.querySelector('.toggle-summary-icon').textContent = isHidden ? 'Colapsar ▲' : 'Expandir ▾';
+      };
+
+      card.insertBefore(summaryBadge, setsContainer);
+    }
   });
 
   updateWorkoutCompletionBanner();
+}
+
+function attachStepperHold(btnEl, actionFn) {
+  if (!btnEl) return;
+  let holdTimeout = null;
+  let holdInterval = null;
+
+  const stopHold = () => {
+    if (holdTimeout) clearTimeout(holdTimeout);
+    if (holdInterval) clearInterval(holdInterval);
+    holdTimeout = null;
+    holdInterval = null;
+  };
+
+  btnEl.onclick = () => actionFn();
+
+  btnEl.addEventListener('pointerdown', (e) => {
+    if (btnEl.disabled || e.button !== 0) return;
+    stopHold();
+    holdTimeout = setTimeout(() => {
+      holdInterval = setInterval(() => {
+        actionFn();
+      }, 110);
+    }, 380);
+  });
+
+  btnEl.addEventListener('pointerup', stopHold);
+  btnEl.addEventListener('pointerleave', stopHold);
+  btnEl.addEventListener('pointercancel', stopHold);
 }
 
 function updateWorkoutCompletionBanner() {
@@ -1791,9 +1828,15 @@ function updateWorkoutCompletionBanner() {
     }
   });
 
+  const progressPct = totalSets > 0 ? Math.round((completedSets / totalSets) * 100) : 0;
+  const linearFill = document.getElementById('workoutLinearProgressFill');
+  const linearBar = document.getElementById('workoutLinearProgressBar');
+  if (linearFill) linearFill.style.width = `${progressPct}%`;
+  if (linearBar) linearBar.setAttribute('aria-valuenow', String(progressPct));
+
   const headerDay = document.getElementById('activeRoutineDayName');
   if (headerDay) {
-    headerDay.textContent = `${appState.activeSession.dayName} • (${completedExercises}/${totalExercises} Ejercicios)`;
+    headerDay.textContent = `${appState.activeSession.dayName} • ${progressPct}% (${completedSets}/${totalSets} series)`;
   }
 
   if (totalExercises > 0 && completedExercises === totalExercises) {
@@ -2073,6 +2116,7 @@ async function confirmDiscardWorkout() {
   clearInterval(appState.restTimer.intervalId);
   appState.restTimer.endTimeMs = null;
   cancelRestPushNotification();
+  releaseWakeLock();
   restTimerBanner.classList.add('hidden');
 
   appState.activeSession = null;
@@ -2202,11 +2246,73 @@ async function togglePushNotificationsPermission() {
   }
 }
 
+let activeWakeLockSentinel = null;
+
+async function toggleWakeLock() {
+  const btnWake = document.getElementById('btnToggleWakeLock');
+  if (!('wakeLock' in navigator)) {
+    showToast('Tu navegador no soporta bloqueo de pantalla (Screen Wake Lock).', 'info');
+    return;
+  }
+
+  try {
+    if (activeWakeLockSentinel) {
+      await activeWakeLockSentinel.release();
+      activeWakeLockSentinel = null;
+      if (btnWake) {
+        btnWake.textContent = '☀️ Pantalla';
+        btnWake.style.borderColor = '';
+        btnWake.style.color = '';
+      }
+      showToast('Bloqueo de pantalla normal restablecido.', 'info');
+    } else {
+      activeWakeLockSentinel = await navigator.wakeLock.request('screen');
+      if (btnWake) {
+        btnWake.textContent = '☀️ ON';
+        btnWake.style.borderColor = 'var(--accent-green)';
+        btnWake.style.color = 'var(--accent-green)';
+      }
+      activeWakeLockSentinel.addEventListener('release', () => {
+        activeWakeLockSentinel = null;
+        if (btnWake) {
+          btnWake.textContent = '☀️ Pantalla';
+          btnWake.style.borderColor = '';
+          btnWake.style.color = '';
+        }
+      });
+      showToast('☀️ Pantalla siempre encendida activada para tu sesión.', 'success');
+    }
+  } catch (err) {
+    showToast('No se pudo activar Pantalla ON en este momento.', 'error');
+  }
+}
+
+async function releaseWakeLock() {
+  if (activeWakeLockSentinel) {
+    try {
+      await activeWakeLockSentinel.release();
+    } catch (e) {}
+    activeWakeLockSentinel = null;
+  }
+}
+
 function setupPushNotificationsUI() {
   const btnHeader = document.getElementById('btnTogglePushNotifications');
   const btnBanner = document.getElementById('btnRestPushToggle');
+  const btnWake = document.getElementById('btnToggleWakeLock');
   if (btnHeader) btnHeader.onclick = togglePushNotificationsPermission;
   if (btnBanner) btnBanner.onclick = togglePushNotificationsPermission;
+  if (btnWake) btnWake.onclick = toggleWakeLock;
+
+  document.querySelectorAll('.btn-rest-preset').forEach(btn => {
+    btn.onclick = () => {
+      const secs = parseInt(btn.getAttribute('data-rest'), 10) || 60;
+      CONFIG.DEFAULT_REST_SECONDS = secs;
+      triggerRestTimer(secs, appState.restTimer.exerciseName || '');
+      showToast(`⏱️ Descanso ajustado a ${secs}s`, 'info', 2000);
+    };
+  });
+
   updatePushUIStatus();
 }
 
@@ -2254,9 +2360,20 @@ function cancelRestPushNotification() {
 // --- Background-Proof Rest Timer Floating Banner Logic ---
 function triggerRestTimer(seconds = 60, exerciseName = '') {
   clearInterval(appState.restTimer.intervalId);
+  appState.restTimer.totalSeconds = seconds;
   appState.restTimer.remainingSeconds = seconds;
   appState.restTimer.endTimeMs = Date.now() + (seconds * 1000);
   appState.restTimer.exerciseName = exerciseName || '';
+
+  const exLabel = document.getElementById('restTimerExerciseLabel');
+  if (exLabel) {
+    exLabel.textContent = exerciseName ? `Tras: ${exerciseName}` : 'Siguiente serie';
+  }
+
+  document.querySelectorAll('.btn-rest-preset').forEach(btn => {
+    const bSecs = parseInt(btn.getAttribute('data-rest'), 10);
+    btn.classList.toggle('active', bSecs === seconds);
+  });
 
   restTimerBanner.classList.remove('hidden');
   updateRestTimerUI();
@@ -2300,7 +2417,22 @@ function syncRestTimerFromTimestamp() {
 }
 
 function updateRestTimerUI() {
-  restTimerSeconds.textContent = `${appState.restTimer.remainingSeconds}s`;
+  const rem = appState.restTimer.remainingSeconds || 0;
+  const total = Math.max(1, appState.restTimer.totalSeconds || CONFIG.DEFAULT_REST_SECONDS || 60);
+  restTimerSeconds.textContent = `${rem}s`;
+
+  const fill = document.getElementById('restTimerProgressFill');
+  if (fill) {
+    const pct = Math.min(100, Math.max(0, (rem / total) * 100));
+    fill.style.width = `${pct}%`;
+    if (rem <= 10) {
+      fill.style.backgroundColor = 'var(--accent-green)';
+    } else if (rem <= 20) {
+      fill.style.backgroundColor = 'var(--accent-orange)';
+    } else {
+      fill.style.backgroundColor = 'var(--accent-cyan)';
+    }
+  }
 }
 
 btnRestMinus15.onclick = () => {
@@ -2319,6 +2451,10 @@ btnRestMinus15.onclick = () => {
 btnRestPlus15.onclick = () => {
   if (appState.restTimer.endTimeMs) {
     appState.restTimer.endTimeMs += 15000;
+    appState.restTimer.totalSeconds = Math.max(
+      appState.restTimer.totalSeconds || 60,
+      Math.ceil((appState.restTimer.endTimeMs - Date.now()) / 1000)
+    );
     const remMs = Math.max(0, appState.restTimer.endTimeMs - Date.now());
     scheduleRestPushNotification(remMs, appState.restTimer.exerciseName);
     syncRestTimerFromTimestamp();
@@ -2331,6 +2467,65 @@ btnRestSkip.onclick = () => {
   cancelRestPushNotification();
   restTimerBanner.classList.add('hidden');
 };
+
+// --- Post-Workout Celebration Summary Modal ---
+function openWorkoutSummaryModal(record) {
+  const modal = document.getElementById('workoutSummaryModal');
+  if (!modal) return;
+
+  const mins = Math.max(1, Math.floor((record.durationSeconds || 0) / 60));
+  document.getElementById('workoutSummarySubtitle').textContent = record.dayName || 'Sesión Completada';
+  document.getElementById('summaryDurationVal').textContent = `${mins}m`;
+  document.getElementById('summarySetsVal').textContent = `${record.totalSets || 0}`;
+  document.getElementById('summaryVolumeVal').textContent = `${record.totalVolumeKg || 0} kg`;
+
+  const prsBox = document.getElementById('summaryPRsBox');
+  const prsList = document.getElementById('summaryPRsList');
+  const prItems = [];
+
+  (record.detailedExercises || []).forEach(ex => {
+    (ex.sets || []).forEach(s => {
+      if (s.isPR) {
+        prItems.push(`🏆 <strong>${escapeHTML(ex.name)}</strong>: ${s.weight} ${escapeHTML(s.weightUnit || 'kg')} × ${s.actualReps}`);
+      }
+    });
+  });
+
+  if (prsBox && prsList) {
+    if (prItems.length > 0) {
+      prsBox.classList.remove('hidden');
+      prsList.innerHTML = prItems.map(item => `<div>${item}</div>`).join('');
+    } else {
+      prsBox.classList.add('hidden');
+      prsList.innerHTML = '';
+    }
+  }
+
+  modal.classList.remove('hidden');
+
+  const btnClose = document.getElementById('btnCloseWorkoutSummary');
+  const btnShare = document.getElementById('btnShareWorkoutSummary');
+
+  if (btnClose) {
+    btnClose.onclick = () => modal.classList.add('hidden');
+  }
+
+  if (btnShare) {
+    btnShare.onclick = async () => {
+      const shareText = `🏋️‍♂️ My Gym Tracker — ${record.dayName}\n⏱️ Duración: ${mins} min\n💪 Series Efectivas: ${record.totalSets}\n📊 Volumen Total: ${record.totalVolumeKg} kg${prItems.length > 0 ? `\n🔥 ${prItems.length} Nuevo(s) PR(s) hoy!` : ''}`;
+      try {
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          await navigator.clipboard.writeText(shareText);
+          showToast('📋 ¡Resumen copiado al portapapeles!', 'success');
+        } else {
+          showToast(shareText, 'info', 4000);
+        }
+      } catch (e) {
+        showToast('Resumen listo para compartir.', 'info');
+      }
+    };
+  }
+}
 
 // --- End & Save Workout ---
 async function confirmEndWorkout() {
@@ -2346,6 +2541,7 @@ async function confirmEndWorkout() {
   clearInterval(appState.restTimer.intervalId);
   appState.restTimer.endTimeMs = null;
   cancelRestPushNotification();
+  releaseWakeLock();
   restTimerBanner.classList.add('hidden');
 
   let totalSetsCompleted = 0;
@@ -2419,10 +2615,10 @@ async function confirmEndWorkout() {
 
   renderHistory();
   renderWeeklyStreak();
-  showToast(`¡Entrenamiento guardado! (${Math.floor(workoutRecord.durationSeconds / 60)} min • ${totalSetsCompleted} series)`, 'success', 4200);
+  openWorkoutSummaryModal(workoutRecord);
 }
 
-// --- Exercises Catalog View & Filtering ---
+// --- Exercises Catalog View & Filtering (With SVG Thumbnail Previews) ---
 function setupCatalogFilter() {
   const filterPills = document.querySelectorAll('#categoryFilters .filter-pill');
   const catalogSearch = document.getElementById('catalogSearch');
@@ -2460,34 +2656,34 @@ function renderCatalog(category = 'ALL', searchQuery = '') {
     return;
   }
 
-  const categoryIcons = {
-    'Pierna': '🦵', 'Pectoral': '🛡️', 'Espalda': '📐', 'Hombro': '⚡',
-    'Bíceps': '🦾', 'Tríceps': '💥', 'Abdomen': '🎯'
-  };
-
   filtered.forEach(ex => {
-    const icon = categoryIcons[ex.category] || '🏋️';
     const lastHistory = appState.weightsHistory ? appState.weightsHistory[ex.id] : null;
     const lastWeightStr = (lastHistory && lastHistory.weight !== undefined) ? `${lastHistory.weight} ${lastHistory.unit || 'kg'}` : 'Sin registro de peso';
     const equipment = ex.equipment || 'General';
+    const guideInfo = (typeof getGuideExercise === 'function')
+      ? getGuideExercise(ex.guideSlug || ex.id || ex.name)
+      : { slug: 'bench-press' };
+    const thumbSlug = (guideInfo && guideInfo.slug) ? guideInfo.slug : 'bench-press';
 
     const card = document.createElement('div');
     card.className = 'card exercise-catalog-card';
     card.style.cssText = 'margin-bottom: 12px; display: flex; flex-direction: column; gap: 8px; padding: 14px 16px;';
 
     card.innerHTML = `
-      <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 8px;">
-        <div>
-          <div style="display: flex; align-items: center; gap: 6px;">
-            <span style="font-size: 18px;" aria-hidden="true">${icon}</span>
-            <strong style="font-size: 15px; color: #fff;">${escapeHTML(ex.name)}</strong>
+      <div style="display: flex; justify-content: space-between; align-items: center; gap: 10px;">
+        <div style="display: flex; align-items: center; gap: 12px; min-width: 0;">
+          <div class="catalog-svg-thumb" title="Ver animación de ${escapeHTML(ex.name)}">
+            <img src="assets/exercises/${escapeHTML(thumbSlug)}/frame-1.svg" alt="Ilustración de ${escapeHTML(ex.name)}" loading="lazy" />
           </div>
-          <div style="display: flex; gap: 6px; margin-top: 6px;">
-            <span class="badge badge-${escapeHTML(ex.category.toLowerCase())}">${escapeHTML(ex.category)}</span>
-            <span class="badge" style="background: rgba(255, 255, 255, 0.08); color: var(--text-muted); border: 1px solid var(--border-color);">${escapeHTML(equipment)}</span>
+          <div style="min-width: 0;">
+            <strong style="font-size: 15px; color: #fff; display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${escapeHTML(ex.name)}</strong>
+            <div style="display: flex; gap: 6px; margin-top: 5px; flex-wrap: wrap;">
+              <span class="badge badge-${escapeHTML(ex.category.toLowerCase())}">${escapeHTML(ex.category)}</span>
+              <span class="badge" style="background: rgba(255, 255, 255, 0.08); color: var(--text-muted); border: 1px solid var(--border-color);">${escapeHTML(equipment)}</span>
+            </div>
           </div>
         </div>
-        <button type="button" class="btn btn-secondary btn-sm btn-view-guide" style="font-size: 11px; padding: 4px 10px; border-color: var(--accent-cyan); color: var(--accent-cyan); background: rgba(0, 242, 254, 0.08); border-radius: 12px; font-weight: 700; display: flex; align-items: center; gap: 4px;">
+        <button type="button" class="btn btn-secondary btn-sm btn-view-guide" style="font-size: 11px; padding: 4px 10px; border-color: var(--accent-cyan); color: var(--accent-cyan); background: rgba(0, 242, 254, 0.08); border-radius: 12px; font-weight: 700; display: flex; align-items: center; gap: 4px; flex-shrink: 0;">
           👁️ Guía
         </button>
       </div>
@@ -2497,19 +2693,145 @@ function renderCatalog(category = 'ALL', searchQuery = '') {
       </div>
     `;
 
+    const openGuideHandler = () => openExerciseGuide(ex.guideSlug || ex.name);
     const btnGuide = card.querySelector('.btn-view-guide');
-    if (btnGuide) {
-      btnGuide.onclick = () => {
-        openExerciseGuide(ex.guideSlug || ex.name);
-      };
-    }
+    const thumbBox = card.querySelector('.catalog-svg-thumb');
+    if (btnGuide) btnGuide.onclick = openGuideHandler;
+    if (thumbBox) thumbBox.onclick = openGuideHandler;
 
     catalogList.appendChild(card);
   });
 }
 
-// --- History View ---
+// --- Monthly Consistency Calendar & History View ---
+let currentCalendarYear = new Date().getFullYear();
+let currentCalendarMonth = new Date().getMonth();
+let selectedHistoryIsoDateFilter = null;
+
+function getRecordIsoDate(record) {
+  if (record.completedAtIso && record.completedAtIso.length >= 10) {
+    return record.completedAtIso.slice(0, 10);
+  }
+  if (record.id && String(record.id).startsWith('work_')) {
+    const ts = parseInt(String(record.id).replace('work_', ''), 10);
+    if (!isNaN(ts) && ts > 1600000000000) {
+      return new Date(ts).toISOString().slice(0, 10);
+    }
+  }
+  return null;
+}
+
+function renderConsistencyCalendar() {
+  const grid = document.getElementById('consistencyCalendarGrid');
+  const monthLabel = document.getElementById('calendarMonthLabel');
+  const monthSummary = document.getElementById('calendarMonthSummary');
+  const btnPrev = document.getElementById('btnCalPrevMonth');
+  const btnNext = document.getElementById('btnCalNextMonth');
+  const filterNotice = document.getElementById('calendarFilterNotice');
+  const filterText = document.getElementById('calendarFilterText');
+  const btnClearFilter = document.getElementById('btnClearCalendarFilter');
+
+  if (!grid || !monthLabel) return;
+
+  const monthNames = [
+    'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
+    'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'
+  ];
+  monthLabel.textContent = `${monthNames[currentCalendarMonth]} ${currentCalendarYear}`;
+
+  if (btnPrev) {
+    btnPrev.onclick = () => {
+      currentCalendarMonth -= 1;
+      if (currentCalendarMonth < 0) {
+        currentCalendarMonth = 11;
+        currentCalendarYear -= 1;
+      }
+      renderConsistencyCalendar();
+    };
+  }
+
+  if (btnNext) {
+    btnNext.onclick = () => {
+      currentCalendarMonth += 1;
+      if (currentCalendarMonth > 11) {
+        currentCalendarMonth = 0;
+        currentCalendarYear += 1;
+      }
+      renderConsistencyCalendar();
+    };
+  }
+
+  if (btnClearFilter) {
+    btnClearFilter.onclick = () => {
+      selectedHistoryIsoDateFilter = null;
+      renderHistory();
+    };
+  }
+
+  if (filterNotice && filterText) {
+    if (selectedHistoryIsoDateFilter) {
+      filterNotice.classList.remove('hidden');
+      filterText.textContent = `📌 Mostrando entrenamientos del ${selectedHistoryIsoDateFilter}`;
+    } else {
+      filterNotice.classList.add('hidden');
+    }
+  }
+
+  const sessionsByIsoDate = {};
+  (appState.workoutHistory || []).forEach(rec => {
+    const iso = getRecordIsoDate(rec);
+    if (iso) {
+      sessionsByIsoDate[iso] = (sessionsByIsoDate[iso] || 0) + 1;
+    }
+  });
+
+  grid.innerHTML = '';
+
+  const firstDayOfMonth = new Date(currentCalendarYear, currentCalendarMonth, 1);
+  const daysInMonth = new Date(currentCalendarYear, currentCalendarMonth + 1, 0).getDate();
+  // Convert Sunday (0) -> 6, Monday (1) -> 0
+  const startOffset = (firstDayOfMonth.getDay() + 6) % 7;
+
+  for (let i = 0; i < startOffset; i++) {
+    const emptyCell = document.createElement('div');
+    emptyCell.className = 'calendar-day-cell empty';
+    grid.appendChild(emptyCell);
+  }
+
+  const todayIso = new Date().toISOString().slice(0, 10);
+  let monthTrainedCount = 0;
+
+  for (let dayNum = 1; dayNum <= daysInMonth; dayNum++) {
+    const mStr = String(currentCalendarMonth + 1).padStart(2, '0');
+    const dStr = String(dayNum).padStart(2, '0');
+    const isoStr = `${currentCalendarYear}-${mStr}-${dStr}`;
+    const count = sessionsByIsoDate[isoStr] || 0;
+    if (count > 0) monthTrainedCount += count;
+
+    const cell = document.createElement('button');
+    cell.type = 'button';
+    cell.className = `calendar-day-cell ${isoStr === todayIso ? 'today' : ''} ${count > 0 ? 'trained' : ''} ${selectedHistoryIsoDateFilter === isoStr ? 'selected-filter' : ''}`;
+    cell.innerHTML = `<span>${dayNum}</span>`;
+    cell.setAttribute('aria-label', `${dayNum} de ${monthNames[currentCalendarMonth]}: ${count} sesiones`);
+
+    if (count > 0) {
+      cell.onclick = () => {
+        selectedHistoryIsoDateFilter = (selectedHistoryIsoDateFilter === isoStr) ? null : isoStr;
+        renderHistory();
+      };
+    }
+
+    grid.appendChild(cell);
+  }
+
+  if (monthSummary) {
+    monthSummary.textContent = `${monthTrainedCount} ${monthTrainedCount === 1 ? 'sesión completada' : 'sesiones completadas'} en ${monthNames[currentCalendarMonth]}`;
+  }
+}
+
 function renderHistory() {
+  renderConsistencyCalendar();
+
   const historyLogsContainer = document.getElementById('historyLogsContainer');
   if (!historyLogsContainer) return;
   historyLogsContainer.innerHTML = '';
@@ -2519,7 +2841,16 @@ function renderHistory() {
     return;
   }
 
-  appState.workoutHistory.forEach(record => {
+  const recordsToShow = selectedHistoryIsoDateFilter
+    ? appState.workoutHistory.filter(r => getRecordIsoDate(r) === selectedHistoryIsoDateFilter)
+    : appState.workoutHistory;
+
+  if (recordsToShow.length === 0) {
+    historyLogsContainer.innerHTML = '<div style="color: var(--text-muted); font-size: 13px; text-align: center; padding: 20px;">Sin entrenamientos en la fecha seleccionada.</div>';
+    return;
+  }
+
+  recordsToShow.forEach(record => {
     const mins = Math.floor(record.durationSeconds / 60);
     const item = document.createElement('div');
     item.className = 'history-item card';

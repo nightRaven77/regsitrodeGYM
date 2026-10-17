@@ -197,8 +197,9 @@ body {
   bottom: 0;
   left: 0;
   right: 0;
-  height: 70px;
-  background: rgba(15, 22, 36, 0.92);
+  min-height: 70px;
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+  background: rgba(15, 22, 36, 0.94);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
   border-top: 1px solid var(--border-color);
@@ -373,14 +374,45 @@ body {
 
 /* Live Workout Session View */
 .workout-session-header {
-  background: var(--bg-card-solid);
+  position: sticky;
+  top: 66px;
+  z-index: 90;
+  background: rgba(19, 27, 46, 0.94);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
   border-radius: var(--radius-md);
-  padding: 14px;
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 16px;
+  border: 1px solid var(--glass-border);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+}
+
+.workout-session-top-row {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 16px;
-  border: 1px solid var(--glass-border);
+  gap: 8px;
+}
+
+.workout-linear-progress {
+  width: 100%;
+  height: 6px;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 999px;
+  overflow: hidden;
+  position: relative;
+}
+
+.workout-linear-progress-fill {
+  height: 100%;
+  width: 0%;
+  background: linear-gradient(90deg, var(--accent-cyan), var(--accent-green));
+  border-radius: 999px;
+  transition: width 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+  box-shadow: 0 0 10px rgba(0, 230, 118, 0.5);
 }
 
 .exercise-live-card {
@@ -389,11 +421,39 @@ body {
   border-radius: var(--radius-lg);
   padding: 16px;
   margin-bottom: 16px;
+  transition: border-color 0.25s ease, background 0.25s ease, padding 0.2s ease;
 }
 
 .exercise-live-card.completed {
-  border-color: rgba(0, 230, 118, 0.4);
-  background: rgba(0, 230, 118, 0.03);
+  border-color: rgba(0, 230, 118, 0.45);
+  background: rgba(0, 230, 118, 0.04);
+}
+
+.exercise-live-card.collapsed-card {
+  padding: 12px 16px;
+}
+
+.exercise-live-card.collapsed-card .exercise-collapsible-body {
+  display: none;
+}
+
+.exercise-collapsed-summary {
+  display: none;
+  font-size: 12px;
+  color: var(--accent-green);
+  font-weight: 600;
+  margin-top: 4px;
+  padding: 6px 10px;
+  border-radius: var(--radius-sm);
+  background: rgba(0, 230, 118, 0.08);
+  border: 1px solid rgba(0, 230, 118, 0.2);
+  cursor: pointer;
+}
+
+.exercise-live-card.collapsed-card .exercise-collapsed-summary {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
 }
 
 .exercise-live-title {
@@ -408,8 +468,8 @@ body {
 /* Set Table */
 .set-row {
   display: grid;
-  grid-template-columns: 36px 1fr 1fr 50px;
-  gap: 10px;
+  grid-template-columns: 36px 1fr 1fr 48px;
+  gap: 8px;
   align-items: center;
   padding: 8px 0;
   border-bottom: 1px solid rgba(255, 255, 255, 0.05);
@@ -443,18 +503,19 @@ body {
   border: 1px solid var(--border-color);
   border-radius: var(--radius-sm);
   color: #fff;
-  padding: 8px;
+  padding: 8px 4px;
   font-size: 16px;
   font-weight: 700;
   text-align: center;
   width: 100%;
+  min-width: 0;
 }
 
-/* Stepper +/- controls for weight and reps */
+/* Stepper +/- controls for weight and reps (WCAG 2.2 Touch Targets) */
 .stepper-group {
   display: flex;
   align-items: center;
-  gap: 2px;
+  gap: 4px;
 }
 
 .btn-step {
@@ -462,9 +523,9 @@ body {
   border: 1px solid var(--border-color);
   color: var(--text-main);
   border-radius: var(--radius-sm);
-  width: 28px;
-  height: 36px;
-  font-size: 16px;
+  width: 34px;
+  height: 38px;
+  font-size: 17px;
   font-weight: 800;
   display: flex;
   align-items: center;
@@ -504,8 +565,8 @@ body {
   border: 1px solid var(--border-color);
   color: var(--text-main);
   border-radius: 4px;
-  width: 26px;
-  height: 26px;
+  width: 28px;
+  height: 28px;
   font-size: 11px;
   display: inline-flex;
   align-items: center;
@@ -629,23 +690,74 @@ body {
 /* Rest Timer Overlay (Floating at Bottom above nav) */
 .rest-timer-banner {
   position: fixed;
-  bottom: 75px;
+  bottom: calc(76px + env(safe-area-inset-bottom, 0px));
   left: 12px;
   right: 12px;
   max-width: 576px;
   margin: 0 auto;
-  background: rgba(19, 27, 46, 0.95);
+  background: rgba(15, 22, 38, 0.97);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
   border: 1px solid var(--accent-cyan);
   border-radius: var(--radius-md);
-  padding: 12px 16px;
+  padding: 10px 14px 14px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  box-shadow: 0 10px 34px rgba(0, 242, 254, 0.28);
+  z-index: 999;
+  animation: slideUp 0.3s ease;
+  overflow: hidden;
+}
+
+.rest-timer-main-row {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  box-shadow: 0 8px 30px rgba(0, 242, 254, 0.25);
-  z-index: 999;
-  animation: slideUp 0.3s ease;
+  gap: 8px;
+}
+
+.rest-preset-pills {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+}
+
+.btn-rest-preset {
+  flex: 1;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--border-color);
+  color: var(--text-muted);
+  border-radius: 6px;
+  padding: 3px 6px;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.btn-rest-preset:hover,
+.btn-rest-preset.active {
+  background: rgba(0, 242, 254, 0.16);
+  border-color: var(--accent-cyan);
+  color: var(--accent-cyan);
+}
+
+.rest-timer-progress-track {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.rest-timer-progress-fill {
+  height: 100%;
+  width: 100%;
+  background: var(--accent-cyan);
+  transition: width 0.35s linear, background-color 0.3s ease;
 }
 
 @keyframes slideUp {
@@ -816,13 +928,28 @@ body {
   background: var(--bg-input);
   border: 1px solid var(--glass-border);
   border-radius: 20px;
-  padding: 4px 10px;
+  padding: 5px 12px;
   color: #fff;
   font-family: var(--font-body);
-  font-size: 12px;
-  font-weight: 700;
+  font-size: 13px;
+  font-weight: 600;
   cursor: pointer;
   transition: all 0.2s ease;
+  min-width: 0;
+  max-width: 170px;
+  flex-shrink: 1;
+}
+
+#activeProfileName {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.profile-arrow {
+  font-size: 10px;
+  opacity: 0.65;
+  flex-shrink: 0;
 }
 
 .profile-pill-btn:hover, .profile-pill-btn:active {
@@ -1339,6 +1466,271 @@ input:focus-visible,
   border: 1px solid rgba(255, 255, 255, 0.25);
 }
 
+/* ==========================================================================
+   Responsive Header & Brand Media Queries
+   ========================================================================== */
+@media (max-width: 768px) {
+  .app-header {
+    padding: 12px 18px;
+  }
+
+  .brand {
+    gap: 10px;
+  }
+
+  .brand-logo-img {
+    width: 38px;
+    height: 38px;
+  }
+
+  .brand-text {
+    font-size: 20px;
+    gap: 5px;
+  }
+}
+
+@media (max-width: 480px) {
+  .app-header {
+    padding: 10px 12px;
+    gap: 8px;
+  }
+
+  .brand {
+    gap: 8px;
+  }
+
+  .brand-logo-img {
+    width: 34px;
+    height: 34px;
+    border-radius: 9px;
+  }
+
+  .brand-text {
+    font-size: 16px;
+    gap: 4px;
+  }
+
+  .header-actions {
+    gap: 6px;
+  }
+
+  .profile-pill-btn {
+    padding: 4px 8px;
+    font-size: 11px;
+    gap: 4px;
+    max-width: 115px;
+  }
+
+  #activeProfileName {
+    max-width: 60px;
+  }
+
+  .header-status {
+    padding: 4px 8px;
+    font-size: 11px;
+    gap: 5px;
+  }
+}
+
+@media (max-width: 360px) {
+  .app-header {
+    padding: 8px 10px;
+  }
+
+  .brand-text {
+    font-size: 14.5px;
+  }
+
+  .profile-pill-btn {
+    max-width: 90px;
+  }
+
+  #activeProfileName {
+    max-width: 45px;
+  }
+
+  #statusText {
+    display: none;
+  }
+
+  .header-status {
+    padding: 6px;
+    border-radius: 50%;
+  }
+}
+
+/* ==========================================================================
+   Catalog SVG Thumbnail, Monthly Consistency Calendar, Muscle Heatmap & Summary
+   ========================================================================== */
+
+.catalog-svg-thumb {
+  width: 52px;
+  height: 52px;
+  border-radius: 12px;
+  background: radial-gradient(circle at center, rgba(0, 242, 254, 0.14), rgba(9, 13, 22, 0.9));
+  border: 1px solid var(--glass-border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  overflow: hidden;
+  cursor: pointer;
+}
+
+.catalog-svg-thumb img {
+  width: 44px;
+  height: 44px;
+  object-fit: contain;
+  filter: drop-shadow(0 2px 6px rgba(0, 242, 254, 0.25));
+}
+
+/* Monthly Consistency Calendar */
+.consistency-calendar-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.consistency-calendar-weekdays {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 4px;
+  text-align: center;
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--text-muted);
+  margin-bottom: 6px;
+  text-transform: uppercase;
+}
+
+.consistency-calendar-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 5px;
+}
+
+.calendar-day-cell {
+  aspect-ratio: 1;
+  min-height: 34px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-muted);
+  position: relative;
+  transition: all 0.15s ease;
+}
+
+.calendar-day-cell.empty {
+  background: transparent;
+  border-color: transparent;
+}
+
+.calendar-day-cell.today {
+  border-color: var(--accent-cyan);
+  color: #fff;
+}
+
+.calendar-day-cell.trained {
+  background: rgba(0, 230, 118, 0.18);
+  border-color: var(--accent-green);
+  color: var(--accent-green);
+  font-weight: 800;
+  cursor: pointer;
+  box-shadow: 0 0 10px rgba(0, 230, 118, 0.15);
+}
+
+.calendar-day-cell.trained:hover,
+.calendar-day-cell.selected-filter {
+  background: var(--accent-green);
+  color: #050b14;
+  transform: scale(1.06);
+}
+
+/* Anatomical SVG Muscle Heatmap */
+.muscle-heatmap-wrapper {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  align-items: center;
+  justify-items: center;
+  padding: 10px 6px;
+  background: radial-gradient(circle at center, rgba(0, 242, 254, 0.06), rgba(9, 13, 22, 0.65));
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-color);
+}
+
+.body-svg-figure {
+  width: 100%;
+  max-width: 145px;
+  height: auto;
+  overflow: visible;
+}
+
+.body-svg-figure .muscle-zone {
+  transition: fill 0.35s ease, filter 0.35s ease, stroke 0.35s ease;
+  cursor: pointer;
+}
+
+.body-svg-figure .muscle-zone:hover {
+  filter: brightness(1.25) drop-shadow(0 0 8px rgba(0, 242, 254, 0.6));
+}
+
+.heatmap-muscle-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 10px;
+  justify-content: center;
+}
+
+/* Post-Workout Celebration Summary Modal */
+.summary-stat-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  margin: 14px 0;
+}
+
+.summary-stat-box {
+  background: var(--bg-input);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-sm);
+  padding: 10px 6px;
+  text-align: center;
+}
+
+.summary-stat-val {
+  font-family: var(--font-heading);
+  font-size: 20px;
+  font-weight: 800;
+  color: var(--accent-cyan);
+}
+
+.summary-stat-lbl {
+  font-size: 10px;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  margin-top: 2px;
+}
+
+@keyframes prPulseGlow {
+  0% { box-shadow: 0 0 6px rgba(255, 215, 0, 0.4); transform: scale(1); }
+  50% { box-shadow: 0 0 18px rgba(255, 215, 0, 0.9); transform: scale(1.08); }
+  100% { box-shadow: 0 0 6px rgba(255, 215, 0, 0.4); transform: scale(1); }
+}
+
+.pr-live-badge {
+  animation: prPulseGlow 2s infinite ease-in-out;
+}
+
+
 </style>
 </head>
 
@@ -1353,11 +1745,11 @@ input:focus-visible,
         <span class="brand-highlight">Gym Tracker</span>
       </div>
     </div>
-    <div style="display: flex; align-items: center; gap: 8px;">
+    <div class="header-actions">
       <button id="btnProfileSelect" class="profile-pill-btn" aria-label="Seleccionar o gestionar perfil de usuario">
         <span id="activeProfileAvatar" aria-hidden="true">👤</span>
         <span id="activeProfileName">—</span>
-        <span style="font-size: 10px; opacity: 0.6;" aria-hidden="true">▼</span>
+        <span class="profile-arrow" aria-hidden="true">▼</span>
       </button>
       <div id="headerStatus" class="header-status" role="status" aria-live="polite">
         <div class="status-dot" aria-hidden="true"></div>
@@ -1434,22 +1826,28 @@ input:focus-visible,
 
       <!-- State 2: Active Workout in Progress -->
       <div id="workoutActiveScreen" class="hidden">
-        <!-- Active Workout Session Header -->
+        <!-- Active Workout Session Header (Sticky with Linear Progress) -->
         <div class="workout-session-header">
-          <div>
-            <div id="activeRoutineDayName" style="font-weight: 800; font-size: 16px; color: var(--accent-cyan);">Día 1:
-              Pierna</div>
-            <div id="workoutStartTime" style="font-size: 11px; color: var(--text-muted);">Inicio: --:--</div>
+          <div class="workout-session-top-row">
+            <div>
+              <div id="activeRoutineDayName" style="font-weight: 800; font-size: 15px; color: var(--accent-cyan);">Día 1:
+                Pierna</div>
+              <div id="workoutStartTime" style="font-size: 11px; color: var(--text-muted);">Inicio: --:--</div>
+            </div>
+            <div style="text-align: right;">
+              <div id="sessionTimerDisplay" class="workout-timer-display" style="font-size: 23px; margin: 0;">00:00:00
+              </div>
+              <div style="display: flex; gap: 5px; margin-top: 4px; justify-content: flex-end; flex-wrap: wrap;">
+                <button id="btnToggleWakeLock" class="btn btn-secondary btn-sm" title="Mantener pantalla encendida durante el entrenamiento" aria-label="Mantener pantalla encendida">☀️ Pantalla</button>
+                <button id="btnTogglePushNotifications" class="btn btn-secondary btn-sm" title="Activar notificaciones Push de descanso" aria-label="Activar notificaciones Push para el tiempo de descanso">🔔 Push</button>
+                <button id="btnOpenPlateCalcHeader" class="btn btn-secondary btn-sm" title="Calculadora de discos" aria-label="Abrir calculadora de discos">🧮 Discos</button>
+                <button id="btnPauseWorkout" class="btn btn-secondary btn-sm">Pausar</button>
+                <button id="btnEndWorkout" class="btn btn-danger btn-sm">Finalizar</button>
+              </div>
+            </div>
           </div>
-          <div style="text-align: right;">
-            <div id="sessionTimerDisplay" class="workout-timer-display" style="font-size: 24px; margin: 0;">00:00:00
-            </div>
-            <div style="display: flex; gap: 6px; margin-top: 4px; justify-content: flex-end; flex-wrap: wrap;">
-              <button id="btnTogglePushNotifications" class="btn btn-secondary btn-sm" title="Activar notificaciones Push de descanso" aria-label="Activar notificaciones Push para el tiempo de descanso">🔔 Push</button>
-              <button id="btnOpenPlateCalcHeader" class="btn btn-secondary btn-sm" title="Calculadora de discos" aria-label="Abrir calculadora de discos">🧮 Discos</button>
-              <button id="btnPauseWorkout" class="btn btn-secondary btn-sm">Pausar</button>
-              <button id="btnEndWorkout" class="btn btn-danger btn-sm">Finalizar</button>
-            </div>
+          <div class="workout-linear-progress" role="progressbar" aria-label="Progreso de series de la sesión" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" id="workoutLinearProgressBar">
+            <div class="workout-linear-progress-fill" id="workoutLinearProgressFill"></div>
           </div>
         </div>
 
@@ -1575,6 +1973,31 @@ input:focus-visible,
     <!-- TAB 4: HISTORIAL Y REGISTROS -->
     <!-- =================================================================== -->
     <section id="tab-history" class="tab-content" aria-label="Historial de Entrenamientos">
+      <!-- Monthly Consistency Calendar (Strava / GitHub Style) -->
+      <div class="card" id="historyConsistencyCalendarCard">
+        <div class="consistency-calendar-header">
+          <div>
+            <span style="font-family: var(--font-heading); font-weight: 800; font-size: 16px; color: #fff;">📅 Calendario de Consistencia</span>
+            <div id="calendarMonthSummary" style="font-size: 11px; color: var(--accent-green); font-weight: 600; margin-top: 2px;">0 sesiones este mes</div>
+          </div>
+          <div style="display: flex; align-items: center; gap: 6px;">
+            <button type="button" id="btnCalPrevMonth" class="btn btn-secondary btn-sm" style="padding: 4px 10px;" aria-label="Mes anterior">◀</button>
+            <span id="calendarMonthLabel" style="font-size: 13px; font-weight: 700; min-width: 105px; text-align: center; color: var(--accent-cyan);">--</span>
+            <button type="button" id="btnCalNextMonth" class="btn btn-secondary btn-sm" style="padding: 4px 10px;" aria-label="Mes siguiente">▶</button>
+          </div>
+        </div>
+        <div class="consistency-calendar-weekdays" aria-hidden="true">
+          <span>Lun</span><span>Mar</span><span>Mié</span><span>Jue</span><span>Vie</span><span>Sáb</span><span>Dom</span>
+        </div>
+        <div id="consistencyCalendarGrid" class="consistency-calendar-grid">
+          <!-- Populated via JS -->
+        </div>
+        <div id="calendarFilterNotice" class="hidden" style="margin-top: 8px; display: flex; justify-content: space-between; align-items: center; font-size: 11px; color: var(--accent-cyan); background: rgba(0,242,254,0.08); padding: 5px 10px; border-radius: 6px;">
+          <span id="calendarFilterText">Filtrando por día</span>
+          <button type="button" id="btnClearCalendarFilter" class="btn btn-secondary btn-sm" style="padding: 2px 8px; font-size: 10px;">Ver Todos ✕</button>
+        </div>
+      </div>
+
       <div class="card">
         <div class="card-title">
           <span>📜 Historial de Entrenamientos</span>
@@ -1607,6 +2030,16 @@ input:focus-visible,
         </div>
         <div id="prsContainer" style="display: flex; gap: 8px; overflow-x: auto; padding-bottom: 4px;">
           <!-- Populated via JS -->
+        </div>
+      </div>
+
+      <!-- Interactive Anatomical SVG Muscle Heatmap Card -->
+      <div class="card" id="muscleHeatmapCard">
+        <div class="card-title">
+          <span>🧬 Mapa de Calor Muscular (Series Efectivas)</span>
+        </div>
+        <div id="muscleHeatmapContainer">
+          <!-- Populated via JS in analytics.js -->
         </div>
       </div>
 
@@ -1651,18 +2084,32 @@ input:focus-visible,
     <!-- FLOATING REST TIMER BANNER -->
     <!-- =================================================================== -->
     <div id="restTimerBanner" class="rest-timer-banner hidden" role="timer" aria-live="off">
-      <div class="rest-timer-info">
-        <div style="font-size: 11px; color: var(--text-muted); text-transform: uppercase; display: flex; align-items: center; gap: 4px;">
-          <span>Descanso</span>
-          <span id="restPushStatusBadge" style="font-size: 10px; color: var(--accent-cyan);"></span>
+      <div class="rest-timer-main-row">
+        <div class="rest-timer-info">
+          <div>
+            <div style="font-size: 10px; color: var(--text-muted); text-transform: uppercase; display: flex; align-items: center; gap: 4px;">
+              <span>Descanso</span>
+              <span id="restPushStatusBadge" style="font-size: 10px; color: var(--accent-cyan);"></span>
+            </div>
+            <div id="restTimerExerciseLabel" style="font-size: 11px; color: #fff; font-weight: 600; max-width: 130px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">Siguiente serie</div>
+          </div>
+          <div id="restTimerSeconds" class="rest-timer-seconds">60s</div>
         </div>
-        <div id="restTimerSeconds" class="rest-timer-seconds">60s</div>
+        <div class="rest-timer-controls">
+          <button id="btnRestPushToggle" class="btn btn-secondary btn-sm" title="Activar alerta Push en segundo plano" aria-label="Activar alerta Push en segundo plano">🔔</button>
+          <button id="btnRestMinus15" class="btn btn-secondary btn-sm" aria-label="Restar 15 segundos al descanso">-15s</button>
+          <button id="btnRestPlus15" class="btn btn-secondary btn-sm" aria-label="Sumar 15 segundos al descanso">+15s</button>
+          <button id="btnRestSkip" class="btn btn-primary btn-sm" aria-label="Saltar tiempo de descanso">Saltar</button>
+        </div>
       </div>
-      <div class="rest-timer-controls">
-        <button id="btnRestPushToggle" class="btn btn-secondary btn-sm" title="Activar alerta Push en segundo plano" aria-label="Activar alerta Push en segundo plano">🔔</button>
-        <button id="btnRestMinus15" class="btn btn-secondary btn-sm" aria-label="Restar 15 segundos al descanso">-15s</button>
-        <button id="btnRestPlus15" class="btn btn-secondary btn-sm" aria-label="Sumar 15 segundos al descanso">+15s</button>
-        <button id="btnRestSkip" class="btn btn-primary btn-sm" aria-label="Saltar tiempo de descanso">Saltar</button>
+      <div class="rest-preset-pills" aria-label="Preselecciones rápidas de descanso">
+        <button type="button" class="btn-rest-preset" data-rest="60">60s</button>
+        <button type="button" class="btn-rest-preset" data-rest="90">90s</button>
+        <button type="button" class="btn-rest-preset" data-rest="120">2m</button>
+        <button type="button" class="btn-rest-preset" data-rest="180">3m</button>
+      </div>
+      <div class="rest-timer-progress-track" aria-hidden="true">
+        <div id="restTimerProgressFill" class="rest-timer-progress-fill"></div>
       </div>
     </div>
 
@@ -2062,6 +2509,42 @@ input:focus-visible,
           🎨 Ilustraciones técnicas licenciadas bajo <a href="https://creativecommons.org/licenses/by-sa/4.0/"
             target="_blank" rel="noopener noreferrer" style="color: var(--accent-blue); text-decoration: underline;">CC BY-SA 4.0</a> (Everkinetic
           &amp; Bryl Lim).
+        </div>
+      </div>
+    </div>
+
+    <!-- =================================================================== -->
+    <!-- MODAL: Celebración y Resumen Post-Entrenamiento -->
+    <!-- =================================================================== -->
+    <div id="workoutSummaryModal" class="modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="workoutSummaryTitle">
+      <div class="modal-card card" style="max-width: 420px; width: 92%; text-align: center; border-color: var(--accent-green);">
+        <div style="font-size: 40px; margin-bottom: 4px;" aria-hidden="true">🏆</div>
+        <h3 id="workoutSummaryTitle" style="font-family: var(--font-heading); font-size: 21px; font-weight: 800; color: #fff; margin: 0;">¡Entrenamiento Completado!</h3>
+        <div id="workoutSummarySubtitle" style="font-size: 13px; color: var(--accent-cyan); font-weight: 700; margin-top: 4px;">Día 1</div>
+
+        <div class="summary-stat-grid">
+          <div class="summary-stat-box">
+            <div id="summaryDurationVal" class="summary-stat-val">0m</div>
+            <div class="summary-stat-lbl">Duración</div>
+          </div>
+          <div class="summary-stat-box">
+            <div id="summarySetsVal" class="summary-stat-val">0</div>
+            <div class="summary-stat-lbl">Series</div>
+          </div>
+          <div class="summary-stat-box">
+            <div id="summaryVolumeVal" class="summary-stat-val">0 kg</div>
+            <div class="summary-stat-lbl">Volumen</div>
+          </div>
+        </div>
+
+        <div id="summaryPRsBox" class="hidden" style="background: rgba(255, 215, 0, 0.1); border: 1px solid rgba(255, 215, 0, 0.35); border-radius: var(--radius-sm); padding: 10px; margin-bottom: 14px; text-align: left;">
+          <div style="font-size: 12px; font-weight: 800; color: #ffd700; margin-bottom: 6px;">🔥 Nuevos Récords Personales (PRs) Hoy:</div>
+          <div id="summaryPRsList" style="display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: #fff;"></div>
+        </div>
+
+        <div style="display: flex; gap: 8px;">
+          <button type="button" id="btnShareWorkoutSummary" class="btn btn-secondary btn-sm" style="flex: 1;">📋 Copiar Resumen</button>
+          <button type="button" id="btnCloseWorkoutSummary" class="btn btn-primary btn-sm" style="flex: 1;">¡Excelente! 💪</button>
         </div>
       </div>
     </div>
@@ -2878,6 +3361,7 @@ function renderAnalyticsDashboard() {
     renderOverloadChart(selectedExName);
     renderWeeklyVolumeChart();
     renderMuscleDistributionChart();
+    renderMuscleHeatmap();
   } catch (err) {
     console.error('Error rendering analytics dashboard:', err);
   }
@@ -3122,6 +3606,178 @@ function renderMuscleDistributionChart() {
     }
   });
 }
+
+// 5. Interactive Anatomical SVG Muscle Heatmap (Front & Back Silhouette)
+function renderMuscleHeatmap() {
+  const container = document.getElementById('muscleHeatmapContainer');
+  if (!container) return;
+
+  const muscleCounts = {
+    'Pierna': 0, 'Pectoral': 0, 'Espalda': 0, 'Hombro': 0, 'Bíceps': 0, 'Tríceps': 0, 'Abdomen': 0
+  };
+  const filteredHistory = getFilteredWorkoutHistory();
+
+  filteredHistory.forEach(record => {
+    if (record.detailedExercises) {
+      record.detailedExercises.forEach(ex => {
+        if (muscleCounts[ex.category] !== undefined) {
+          const effectiveSets = (ex.sets || []).filter(s => s.setType !== 'W');
+          muscleCounts[ex.category] += effectiveSets.length;
+        }
+      });
+    }
+  });
+
+  const maxSets = Math.max(1, ...Object.values(muscleCounts));
+
+  const getHeatStyle = (cat) => {
+    const sets = muscleCounts[cat] || 0;
+    if (sets === 0) {
+      return {
+        fill: 'rgba(255, 255, 255, 0.08)',
+        stroke: 'rgba(255, 255, 255, 0.22)',
+        glow: 'none'
+      };
+    }
+    const ratio = Math.min(1, sets / Math.max(8, maxSets));
+    if (ratio >= 0.65) {
+      return {
+        fill: 'rgba(0, 230, 118, 0.75)',
+        stroke: '#00e676',
+        glow: 'drop-shadow(0 0 8px rgba(0, 230, 118, 0.65))'
+      };
+    }
+    if (ratio >= 0.3) {
+      return {
+        fill: 'rgba(0, 242, 254, 0.65)',
+        stroke: '#00f2fe',
+        glow: 'drop-shadow(0 0 6px rgba(0, 242, 254, 0.55))'
+      };
+    }
+    return {
+      fill: 'rgba(79, 172, 254, 0.45)',
+      stroke: '#4facfe',
+      glow: 'none'
+    };
+  };
+
+  const pec = getHeatStyle('Pectoral');
+  const sho = getHeatStyle('Hombro');
+  const bic = getHeatStyle('Bíceps');
+  const abd = getHeatStyle('Abdomen');
+  const leg = getHeatStyle('Pierna');
+  const esp = getHeatStyle('Espalda');
+  const tri = getHeatStyle('Tríceps');
+
+  const badgesHtml = Object.keys(muscleCounts).map(cat => {
+    const count = muscleCounts[cat];
+    const activeColor = count > 0 ? 'var(--accent-cyan)' : 'var(--text-muted)';
+    return `<span class="badge badge-${escapeAnalyticsHTML(cat.toLowerCase())}" style="font-size: 10px; opacity: ${count > 0 ? '1' : '0.55'};">
+      ${escapeAnalyticsHTML(cat)}: <strong style="color: ${activeColor};">${count} series</strong>
+    </span>`;
+  }).join('');
+
+  container.innerHTML = `
+    <div class="muscle-heatmap-wrapper">
+      <!-- ANTERIOR (FRONT) -->
+      <div style="text-align: center; width: 100%;">
+        <div style="font-size: 11px; font-weight: 700; color: var(--text-muted); margin-bottom: 4px; text-transform: uppercase;">Vista Frontal</div>
+        <svg class="body-svg-figure" viewBox="0 0 120 220" role="img" aria-label="Mapa muscular frontal">
+          <!-- Head & Neck -->
+          <circle cx="60" cy="20" r="12" fill="rgba(255,255,255,0.12)" stroke="rgba(255,255,255,0.25)" stroke-width="1.2"/>
+          <rect x="55" y="32" width="10" height="7" rx="2" fill="rgba(255,255,255,0.12)"/>
+
+          <!-- Hombro (Deltoids Front) -->
+          <g class="muscle-zone" data-muscle="Hombro" style="filter: ${sho.glow};">
+            <title>Hombro: ${muscleCounts['Hombro']} series efectivas</title>
+            <ellipse cx="34" cy="48" rx="9" ry="11" fill="${sho.fill}" stroke="${sho.stroke}" stroke-width="1.5"/>
+            <ellipse cx="86" cy="48" rx="9" ry="11" fill="${sho.fill}" stroke="${sho.stroke}" stroke-width="1.5"/>
+          </g>
+
+          <!-- Pectoral (Chest) -->
+          <g class="muscle-zone" data-muscle="Pectoral" style="filter: ${pec.glow};">
+            <title>Pectoral: ${muscleCounts['Pectoral']} series efectivas</title>
+            <path d="M42 41 Q60 44 60 58 Q45 60 41 50 Z" fill="${pec.fill}" stroke="${pec.stroke}" stroke-width="1.5"/>
+            <path d="M78 41 Q60 44 60 58 Q75 60 79 50 Z" fill="${pec.fill}" stroke="${pec.stroke}" stroke-width="1.5"/>
+          </g>
+
+          <!-- Bíceps (Arms Front) -->
+          <g class="muscle-zone" data-muscle="Bíceps" style="filter: ${bic.glow};">
+            <title>Bíceps: ${muscleCounts['Bíceps']} series efectivas</title>
+            <rect x="24" y="60" width="11" height="26" rx="5" fill="${bic.fill}" stroke="${bic.stroke}" stroke-width="1.5"/>
+            <rect x="85" y="60" width="11" height="26" rx="5" fill="${bic.fill}" stroke="${bic.stroke}" stroke-width="1.5"/>
+          </g>
+          <!-- Forearms -->
+          <rect x="21" y="88" width="9" height="24" rx="4" fill="rgba(255,255,255,0.08)" stroke="rgba(255,255,255,0.18)"/>
+          <rect x="90" y="88" width="9" height="24" rx="4" fill="rgba(255,255,255,0.08)" stroke="rgba(255,255,255,0.18)"/>
+
+          <!-- Abdomen (Core / Abs) -->
+          <g class="muscle-zone" data-muscle="Abdomen" style="filter: ${abd.glow};">
+            <title>Abdomen: ${muscleCounts['Abdomen']} series efectivas</title>
+            <rect x="46" y="61" width="28" height="42" rx="6" fill="${abd.fill}" stroke="${abd.stroke}" stroke-width="1.5"/>
+            <line x1="60" y1="63" x2="60" y2="101" stroke="rgba(9,13,22,0.5)" stroke-width="1.2"/>
+            <line x1="48" y1="74" x2="72" y2="74" stroke="rgba(9,13,22,0.5)" stroke-width="1.2"/>
+            <line x1="48" y1="87" x2="72" y2="87" stroke="rgba(9,13,22,0.5)" stroke-width="1.2"/>
+          </g>
+
+          <!-- Pierna (Quads & Calves Front) -->
+          <g class="muscle-zone" data-muscle="Pierna" style="filter: ${leg.glow};">
+            <title>Pierna: ${muscleCounts['Pierna']} series efectivas</title>
+            <rect x="42" y="107" width="15" height="52" rx="7" fill="${leg.fill}" stroke="${leg.stroke}" stroke-width="1.5"/>
+            <rect x="63" y="107" width="15" height="52" rx="7" fill="${leg.fill}" stroke="${leg.stroke}" stroke-width="1.5"/>
+            <rect x="44" y="163" width="12" height="42" rx="5" fill="${leg.fill}" stroke="${leg.stroke}" stroke-width="1.3"/>
+            <rect x="64" y="163" width="12" height="42" rx="5" fill="${leg.fill}" stroke="${leg.stroke}" stroke-width="1.3"/>
+          </g>
+        </svg>
+      </div>
+
+      <!-- POSTERIOR (BACK) -->
+      <div style="text-align: center; width: 100%;">
+        <div style="font-size: 11px; font-weight: 700; color: var(--text-muted); margin-bottom: 4px; text-transform: uppercase;">Vista Posterior</div>
+        <svg class="body-svg-figure" viewBox="0 0 120 220" role="img" aria-label="Mapa muscular posterior">
+          <!-- Head & Neck -->
+          <circle cx="60" cy="20" r="12" fill="rgba(255,255,255,0.12)" stroke="rgba(255,255,255,0.25)" stroke-width="1.2"/>
+          <rect x="55" y="32" width="10" height="7" rx="2" fill="rgba(255,255,255,0.12)"/>
+
+          <!-- Hombro Posterior -->
+          <g class="muscle-zone" data-muscle="Hombro" style="filter: ${sho.glow};">
+            <title>Hombro: ${muscleCounts['Hombro']} series efectivas</title>
+            <ellipse cx="34" cy="48" rx="9" ry="11" fill="${sho.fill}" stroke="${sho.stroke}" stroke-width="1.5"/>
+            <ellipse cx="86" cy="48" rx="9" ry="11" fill="${sho.fill}" stroke="${sho.stroke}" stroke-width="1.5"/>
+          </g>
+
+          <!-- Espalda (Lats, Traps & Lower Back) -->
+          <g class="muscle-zone" data-muscle="Espalda" style="filter: ${esp.glow};">
+            <title>Espalda: ${muscleCounts['Espalda']} series efectivas</title>
+            <polygon points="41,41 79,41 73,101 47,101" fill="${esp.fill}" stroke="${esp.stroke}" stroke-width="1.5" stroke-linejoin="round"/>
+            <line x1="60" y1="42" x2="60" y2="100" stroke="rgba(9,13,22,0.5)" stroke-width="1.4"/>
+          </g>
+
+          <!-- Tríceps (Arms Back) -->
+          <g class="muscle-zone" data-muscle="Tríceps" style="filter: ${tri.glow};">
+            <title>Tríceps: ${muscleCounts['Tríceps']} series efectivas</title>
+            <rect x="24" y="60" width="11" height="26" rx="5" fill="${tri.fill}" stroke="${tri.stroke}" stroke-width="1.5"/>
+            <rect x="85" y="60" width="11" height="26" rx="5" fill="${tri.fill}" stroke="${tri.stroke}" stroke-width="1.5"/>
+          </g>
+          <!-- Forearms -->
+          <rect x="21" y="88" width="9" height="24" rx="4" fill="rgba(255,255,255,0.08)" stroke="rgba(255,255,255,0.18)"/>
+          <rect x="90" y="88" width="9" height="24" rx="4" fill="rgba(255,255,255,0.08)" stroke="rgba(255,255,255,0.18)"/>
+
+          <!-- Pierna Posterior (Glutes, Hamstrings & Calves) -->
+          <g class="muscle-zone" data-muscle="Pierna" style="filter: ${leg.glow};">
+            <title>Pierna: ${muscleCounts['Pierna']} series efectivas</title>
+            <rect x="42" y="105" width="16" height="54" rx="7" fill="${leg.fill}" stroke="${leg.stroke}" stroke-width="1.5"/>
+            <rect x="62" y="105" width="16" height="54" rx="7" fill="${leg.fill}" stroke="${leg.stroke}" stroke-width="1.5"/>
+            <rect x="44" y="163" width="12" height="42" rx="5" fill="${leg.fill}" stroke="${leg.stroke}" stroke-width="1.3"/>
+            <rect x="64" y="163" width="12" height="42" rx="5" fill="${leg.fill}" stroke="${leg.stroke}" stroke-width="1.3"/>
+          </g>
+        </svg>
+      </div>
+    </div>
+    <div class="heatmap-muscle-badges">${badgesHtml}</div>
+  `;
+}
+
 
 
 // ==========================================================================
@@ -4657,27 +5313,7 @@ function renderLiveExercisesCards() {
 
     liveExercisesContainer.appendChild(card);
     const setsContainer = card.querySelector(`#setsContainer_${ex.id}`);
-
-    // Completed Exercise Accordion Summary Badge
-    if (allDone) {
-      const summaryBadge = document.createElement('div');
-      summaryBadge.className = 'completed-exercise-summary-badge';
-      summaryBadge.style.cssText = 'background: rgba(0, 230, 118, 0.08); border: 1px solid var(--accent-green); padding: 8px 12px; border-radius: var(--radius-sm); font-size: 12px; display: flex; justify-content: space-between; align-items: center; cursor: pointer; color: #fff; margin-bottom: 8px;';
-      summaryBadge.innerHTML = `
-        <span>✅ <strong>${escapeHTML(ex.name)}</strong> • ${sets.length}/${sets.length} series completadas</span>
-        <span class="toggle-summary-icon" style="color: var(--accent-green); font-weight: 700; font-size: 11px;">Ver Series ▾</span>
-      `;
-
-      setsContainer.style.display = 'none';
-
-      summaryBadge.onclick = () => {
-        const isHidden = setsContainer.style.display === 'none';
-        setsContainer.style.display = isHidden ? 'block' : 'none';
-        summaryBadge.querySelector('.toggle-summary-icon').textContent = isHidden ? 'Ocultar ▲' : 'Ver Series ▾';
-      };
-
-      card.insertBefore(summaryBadge, setsContainer);
-    }
+    const noteContainer = noteInput ? noteInput.parentElement : null;
 
     sets.forEach(set => {
       const weightVal = set.weight || 0;
@@ -4776,31 +5412,33 @@ function renderLiveExercisesCards() {
 
       const weightStep = unit === 'lb' ? 5 : 2.5;
 
-      btnWeightMinus.onclick = () => {
+      const doWeightMinus = () => {
         set.weight = Math.max(0, parseFloat((set.weight - weightStep).toFixed(1)));
         weightInput.value = set.weight;
         updateConversion(set.weight);
         saveActiveSession(true);
       };
-
-      btnWeightPlus.onclick = () => {
+      const doWeightPlus = () => {
         set.weight = parseFloat((set.weight + weightStep).toFixed(1));
         weightInput.value = set.weight;
         updateConversion(set.weight);
         saveActiveSession(true);
       };
-
-      btnRepsMinus.onclick = () => {
+      const doRepsMinus = () => {
         set.actualReps = Math.max(0, set.actualReps - 1);
         repsInput.value = set.actualReps;
         saveActiveSession(true);
       };
-
-      btnRepsPlus.onclick = () => {
+      const doRepsPlus = () => {
         set.actualReps = set.actualReps + 1;
         repsInput.value = set.actualReps;
         saveActiveSession(true);
       };
+
+      attachStepperHold(btnWeightMinus, doWeightMinus);
+      attachStepperHold(btnWeightPlus, doWeightPlus);
+      attachStepperHold(btnRepsMinus, doRepsMinus);
+      attachStepperHold(btnRepsPlus, doRepsPlus);
 
       weightInput.addEventListener('input', (e) => {
         set.weight = parseFloat(e.target.value) || 0;
@@ -4892,9 +5530,64 @@ function renderLiveExercisesCards() {
     }
 
     card.appendChild(controlsBar);
+
+    // Completed Exercise Compact Accordion Summary Badge (hides note, sets, and controlsBar until tapped)
+    if (allDone) {
+      const maxSetWeight = Math.max(0, ...sets.map(s => s.weight || 0));
+      const summaryBadge = document.createElement('div');
+      summaryBadge.className = 'completed-exercise-summary-badge';
+      summaryBadge.style.cssText = 'background: rgba(0, 230, 118, 0.08); border: 1px solid var(--accent-green); padding: 8px 12px; border-radius: var(--radius-sm); font-size: 12px; display: flex; justify-content: space-between; align-items: center; cursor: pointer; color: #fff; margin-top: 4px;';
+      summaryBadge.innerHTML = `
+        <span>✅ <strong>${sets.length}/${sets.length} series listas</strong> • Mejor: ${maxSetWeight} ${escapeHTML(unit)}</span>
+        <span class="toggle-summary-icon" style="color: var(--accent-green); font-weight: 700; font-size: 11px;">Expandir ▾</span>
+      `;
+
+      setsContainer.style.display = 'none';
+      controlsBar.style.display = 'none';
+      if (noteContainer) noteContainer.style.display = 'none';
+
+      summaryBadge.onclick = () => {
+        const isHidden = setsContainer.style.display === 'none';
+        setsContainer.style.display = isHidden ? 'block' : 'none';
+        controlsBar.style.display = isHidden ? 'flex' : 'none';
+        if (noteContainer) noteContainer.style.display = isHidden ? 'block' : 'none';
+        summaryBadge.querySelector('.toggle-summary-icon').textContent = isHidden ? 'Colapsar ▲' : 'Expandir ▾';
+      };
+
+      card.insertBefore(summaryBadge, setsContainer);
+    }
   });
 
   updateWorkoutCompletionBanner();
+}
+
+function attachStepperHold(btnEl, actionFn) {
+  if (!btnEl) return;
+  let holdTimeout = null;
+  let holdInterval = null;
+
+  const stopHold = () => {
+    if (holdTimeout) clearTimeout(holdTimeout);
+    if (holdInterval) clearInterval(holdInterval);
+    holdTimeout = null;
+    holdInterval = null;
+  };
+
+  btnEl.onclick = () => actionFn();
+
+  btnEl.addEventListener('pointerdown', (e) => {
+    if (btnEl.disabled || e.button !== 0) return;
+    stopHold();
+    holdTimeout = setTimeout(() => {
+      holdInterval = setInterval(() => {
+        actionFn();
+      }, 110);
+    }, 380);
+  });
+
+  btnEl.addEventListener('pointerup', stopHold);
+  btnEl.addEventListener('pointerleave', stopHold);
+  btnEl.addEventListener('pointercancel', stopHold);
 }
 
 function updateWorkoutCompletionBanner() {
@@ -4917,9 +5610,15 @@ function updateWorkoutCompletionBanner() {
     }
   });
 
+  const progressPct = totalSets > 0 ? Math.round((completedSets / totalSets) * 100) : 0;
+  const linearFill = document.getElementById('workoutLinearProgressFill');
+  const linearBar = document.getElementById('workoutLinearProgressBar');
+  if (linearFill) linearFill.style.width = `${progressPct}%`;
+  if (linearBar) linearBar.setAttribute('aria-valuenow', String(progressPct));
+
   const headerDay = document.getElementById('activeRoutineDayName');
   if (headerDay) {
-    headerDay.textContent = `${appState.activeSession.dayName} • (${completedExercises}/${totalExercises} Ejercicios)`;
+    headerDay.textContent = `${appState.activeSession.dayName} • ${progressPct}% (${completedSets}/${totalSets} series)`;
   }
 
   if (totalExercises > 0 && completedExercises === totalExercises) {
@@ -5199,6 +5898,7 @@ async function confirmDiscardWorkout() {
   clearInterval(appState.restTimer.intervalId);
   appState.restTimer.endTimeMs = null;
   cancelRestPushNotification();
+  releaseWakeLock();
   restTimerBanner.classList.add('hidden');
 
   appState.activeSession = null;
@@ -5328,11 +6028,73 @@ async function togglePushNotificationsPermission() {
   }
 }
 
+let activeWakeLockSentinel = null;
+
+async function toggleWakeLock() {
+  const btnWake = document.getElementById('btnToggleWakeLock');
+  if (!('wakeLock' in navigator)) {
+    showToast('Tu navegador no soporta bloqueo de pantalla (Screen Wake Lock).', 'info');
+    return;
+  }
+
+  try {
+    if (activeWakeLockSentinel) {
+      await activeWakeLockSentinel.release();
+      activeWakeLockSentinel = null;
+      if (btnWake) {
+        btnWake.textContent = '☀️ Pantalla';
+        btnWake.style.borderColor = '';
+        btnWake.style.color = '';
+      }
+      showToast('Bloqueo de pantalla normal restablecido.', 'info');
+    } else {
+      activeWakeLockSentinel = await navigator.wakeLock.request('screen');
+      if (btnWake) {
+        btnWake.textContent = '☀️ ON';
+        btnWake.style.borderColor = 'var(--accent-green)';
+        btnWake.style.color = 'var(--accent-green)';
+      }
+      activeWakeLockSentinel.addEventListener('release', () => {
+        activeWakeLockSentinel = null;
+        if (btnWake) {
+          btnWake.textContent = '☀️ Pantalla';
+          btnWake.style.borderColor = '';
+          btnWake.style.color = '';
+        }
+      });
+      showToast('☀️ Pantalla siempre encendida activada para tu sesión.', 'success');
+    }
+  } catch (err) {
+    showToast('No se pudo activar Pantalla ON en este momento.', 'error');
+  }
+}
+
+async function releaseWakeLock() {
+  if (activeWakeLockSentinel) {
+    try {
+      await activeWakeLockSentinel.release();
+    } catch (e) {}
+    activeWakeLockSentinel = null;
+  }
+}
+
 function setupPushNotificationsUI() {
   const btnHeader = document.getElementById('btnTogglePushNotifications');
   const btnBanner = document.getElementById('btnRestPushToggle');
+  const btnWake = document.getElementById('btnToggleWakeLock');
   if (btnHeader) btnHeader.onclick = togglePushNotificationsPermission;
   if (btnBanner) btnBanner.onclick = togglePushNotificationsPermission;
+  if (btnWake) btnWake.onclick = toggleWakeLock;
+
+  document.querySelectorAll('.btn-rest-preset').forEach(btn => {
+    btn.onclick = () => {
+      const secs = parseInt(btn.getAttribute('data-rest'), 10) || 60;
+      CONFIG.DEFAULT_REST_SECONDS = secs;
+      triggerRestTimer(secs, appState.restTimer.exerciseName || '');
+      showToast(`⏱️ Descanso ajustado a ${secs}s`, 'info', 2000);
+    };
+  });
+
   updatePushUIStatus();
 }
 
@@ -5380,9 +6142,20 @@ function cancelRestPushNotification() {
 // --- Background-Proof Rest Timer Floating Banner Logic ---
 function triggerRestTimer(seconds = 60, exerciseName = '') {
   clearInterval(appState.restTimer.intervalId);
+  appState.restTimer.totalSeconds = seconds;
   appState.restTimer.remainingSeconds = seconds;
   appState.restTimer.endTimeMs = Date.now() + (seconds * 1000);
   appState.restTimer.exerciseName = exerciseName || '';
+
+  const exLabel = document.getElementById('restTimerExerciseLabel');
+  if (exLabel) {
+    exLabel.textContent = exerciseName ? `Tras: ${exerciseName}` : 'Siguiente serie';
+  }
+
+  document.querySelectorAll('.btn-rest-preset').forEach(btn => {
+    const bSecs = parseInt(btn.getAttribute('data-rest'), 10);
+    btn.classList.toggle('active', bSecs === seconds);
+  });
 
   restTimerBanner.classList.remove('hidden');
   updateRestTimerUI();
@@ -5426,7 +6199,22 @@ function syncRestTimerFromTimestamp() {
 }
 
 function updateRestTimerUI() {
-  restTimerSeconds.textContent = `${appState.restTimer.remainingSeconds}s`;
+  const rem = appState.restTimer.remainingSeconds || 0;
+  const total = Math.max(1, appState.restTimer.totalSeconds || CONFIG.DEFAULT_REST_SECONDS || 60);
+  restTimerSeconds.textContent = `${rem}s`;
+
+  const fill = document.getElementById('restTimerProgressFill');
+  if (fill) {
+    const pct = Math.min(100, Math.max(0, (rem / total) * 100));
+    fill.style.width = `${pct}%`;
+    if (rem <= 10) {
+      fill.style.backgroundColor = 'var(--accent-green)';
+    } else if (rem <= 20) {
+      fill.style.backgroundColor = 'var(--accent-orange)';
+    } else {
+      fill.style.backgroundColor = 'var(--accent-cyan)';
+    }
+  }
 }
 
 btnRestMinus15.onclick = () => {
@@ -5445,6 +6233,10 @@ btnRestMinus15.onclick = () => {
 btnRestPlus15.onclick = () => {
   if (appState.restTimer.endTimeMs) {
     appState.restTimer.endTimeMs += 15000;
+    appState.restTimer.totalSeconds = Math.max(
+      appState.restTimer.totalSeconds || 60,
+      Math.ceil((appState.restTimer.endTimeMs - Date.now()) / 1000)
+    );
     const remMs = Math.max(0, appState.restTimer.endTimeMs - Date.now());
     scheduleRestPushNotification(remMs, appState.restTimer.exerciseName);
     syncRestTimerFromTimestamp();
@@ -5457,6 +6249,69 @@ btnRestSkip.onclick = () => {
   cancelRestPushNotification();
   restTimerBanner.classList.add('hidden');
 };
+
+// --- Post-Workout Celebration Summary Modal ---
+function openWorkoutSummaryModal(record) {
+  const modal = document.getElementById('workoutSummaryModal');
+  if (!modal) return;
+
+  const mins = Math.max(1, Math.floor((record.durationSeconds || 0) / 60));
+  document.getElementById('workoutSummarySubtitle').textContent = record.dayName || 'Sesión Completada';
+  document.getElementById('summaryDurationVal').textContent = `${mins}m`;
+  document.getElementById('summarySetsVal').textContent = `${record.totalSets || 0}`;
+  document.getElementById('summaryVolumeVal').textContent = `${record.totalVolumeKg || 0} kg`;
+
+  const prsBox = document.getElementById('summaryPRsBox');
+  const prsList = document.getElementById('summaryPRsList');
+  const prItems = [];
+
+  (record.detailedExercises || []).forEach(ex => {
+    (ex.sets || []).forEach(s => {
+      if (s.isPR) {
+        prItems.push(`🏆 <strong>${escapeHTML(ex.name)}</strong>: ${s.weight} ${escapeHTML(s.weightUnit || 'kg')} × ${s.actualReps}`);
+      }
+    });
+  });
+
+  if (prsBox && prsList) {
+    if (prItems.length > 0) {
+      prsBox.classList.remove('hidden');
+      prsList.innerHTML = prItems.map(item => `<div>${item}</div>`).join('');
+    } else {
+      prsBox.classList.add('hidden');
+      prsList.innerHTML = '';
+    }
+  }
+
+  modal.classList.remove('hidden');
+
+  const btnClose = document.getElementById('btnCloseWorkoutSummary');
+  const btnShare = document.getElementById('btnShareWorkoutSummary');
+
+  if (btnClose) {
+    btnClose.onclick = () => modal.classList.add('hidden');
+  }
+
+  if (btnShare) {
+    btnShare.onclick = async () => {
+      const shareText = `🏋️‍♂️ My Gym Tracker — ${record.dayName}
+⏱️ Duración: ${mins} min
+💪 Series Efectivas: ${record.totalSets}
+📊 Volumen Total: ${record.totalVolumeKg} kg${prItems.length > 0 ? `
+🔥 ${prItems.length} Nuevo(s) PR(s) hoy!` : ''}`;
+      try {
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          await navigator.clipboard.writeText(shareText);
+          showToast('📋 ¡Resumen copiado al portapapeles!', 'success');
+        } else {
+          showToast(shareText, 'info', 4000);
+        }
+      } catch (e) {
+        showToast('Resumen listo para compartir.', 'info');
+      }
+    };
+  }
+}
 
 // --- End & Save Workout ---
 async function confirmEndWorkout() {
@@ -5472,6 +6327,7 @@ async function confirmEndWorkout() {
   clearInterval(appState.restTimer.intervalId);
   appState.restTimer.endTimeMs = null;
   cancelRestPushNotification();
+  releaseWakeLock();
   restTimerBanner.classList.add('hidden');
 
   let totalSetsCompleted = 0;
@@ -5545,10 +6401,10 @@ async function confirmEndWorkout() {
 
   renderHistory();
   renderWeeklyStreak();
-  showToast(`¡Entrenamiento guardado! (${Math.floor(workoutRecord.durationSeconds / 60)} min • ${totalSetsCompleted} series)`, 'success', 4200);
+  openWorkoutSummaryModal(workoutRecord);
 }
 
-// --- Exercises Catalog View & Filtering ---
+// --- Exercises Catalog View & Filtering (With SVG Thumbnail Previews) ---
 function setupCatalogFilter() {
   const filterPills = document.querySelectorAll('#categoryFilters .filter-pill');
   const catalogSearch = document.getElementById('catalogSearch');
@@ -5586,34 +6442,34 @@ function renderCatalog(category = 'ALL', searchQuery = '') {
     return;
   }
 
-  const categoryIcons = {
-    'Pierna': '🦵', 'Pectoral': '🛡️', 'Espalda': '📐', 'Hombro': '⚡',
-    'Bíceps': '🦾', 'Tríceps': '💥', 'Abdomen': '🎯'
-  };
-
   filtered.forEach(ex => {
-    const icon = categoryIcons[ex.category] || '🏋️';
     const lastHistory = appState.weightsHistory ? appState.weightsHistory[ex.id] : null;
     const lastWeightStr = (lastHistory && lastHistory.weight !== undefined) ? `${lastHistory.weight} ${lastHistory.unit || 'kg'}` : 'Sin registro de peso';
     const equipment = ex.equipment || 'General';
+    const guideInfo = (typeof getGuideExercise === 'function')
+      ? getGuideExercise(ex.guideSlug || ex.id || ex.name)
+      : { slug: 'bench-press' };
+    const thumbSlug = (guideInfo && guideInfo.slug) ? guideInfo.slug : 'bench-press';
 
     const card = document.createElement('div');
     card.className = 'card exercise-catalog-card';
     card.style.cssText = 'margin-bottom: 12px; display: flex; flex-direction: column; gap: 8px; padding: 14px 16px;';
 
     card.innerHTML = `
-      <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 8px;">
-        <div>
-          <div style="display: flex; align-items: center; gap: 6px;">
-            <span style="font-size: 18px;" aria-hidden="true">${icon}</span>
-            <strong style="font-size: 15px; color: #fff;">${escapeHTML(ex.name)}</strong>
+      <div style="display: flex; justify-content: space-between; align-items: center; gap: 10px;">
+        <div style="display: flex; align-items: center; gap: 12px; min-width: 0;">
+          <div class="catalog-svg-thumb" title="Ver animación de ${escapeHTML(ex.name)}">
+            <img src="assets/exercises/${escapeHTML(thumbSlug)}/frame-1.svg" alt="Ilustración de ${escapeHTML(ex.name)}" loading="lazy" />
           </div>
-          <div style="display: flex; gap: 6px; margin-top: 6px;">
-            <span class="badge badge-${escapeHTML(ex.category.toLowerCase())}">${escapeHTML(ex.category)}</span>
-            <span class="badge" style="background: rgba(255, 255, 255, 0.08); color: var(--text-muted); border: 1px solid var(--border-color);">${escapeHTML(equipment)}</span>
+          <div style="min-width: 0;">
+            <strong style="font-size: 15px; color: #fff; display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${escapeHTML(ex.name)}</strong>
+            <div style="display: flex; gap: 6px; margin-top: 5px; flex-wrap: wrap;">
+              <span class="badge badge-${escapeHTML(ex.category.toLowerCase())}">${escapeHTML(ex.category)}</span>
+              <span class="badge" style="background: rgba(255, 255, 255, 0.08); color: var(--text-muted); border: 1px solid var(--border-color);">${escapeHTML(equipment)}</span>
+            </div>
           </div>
         </div>
-        <button type="button" class="btn btn-secondary btn-sm btn-view-guide" style="font-size: 11px; padding: 4px 10px; border-color: var(--accent-cyan); color: var(--accent-cyan); background: rgba(0, 242, 254, 0.08); border-radius: 12px; font-weight: 700; display: flex; align-items: center; gap: 4px;">
+        <button type="button" class="btn btn-secondary btn-sm btn-view-guide" style="font-size: 11px; padding: 4px 10px; border-color: var(--accent-cyan); color: var(--accent-cyan); background: rgba(0, 242, 254, 0.08); border-radius: 12px; font-weight: 700; display: flex; align-items: center; gap: 4px; flex-shrink: 0;">
           👁️ Guía
         </button>
       </div>
@@ -5623,19 +6479,145 @@ function renderCatalog(category = 'ALL', searchQuery = '') {
       </div>
     `;
 
+    const openGuideHandler = () => openExerciseGuide(ex.guideSlug || ex.name);
     const btnGuide = card.querySelector('.btn-view-guide');
-    if (btnGuide) {
-      btnGuide.onclick = () => {
-        openExerciseGuide(ex.guideSlug || ex.name);
-      };
-    }
+    const thumbBox = card.querySelector('.catalog-svg-thumb');
+    if (btnGuide) btnGuide.onclick = openGuideHandler;
+    if (thumbBox) thumbBox.onclick = openGuideHandler;
 
     catalogList.appendChild(card);
   });
 }
 
-// --- History View ---
+// --- Monthly Consistency Calendar & History View ---
+let currentCalendarYear = new Date().getFullYear();
+let currentCalendarMonth = new Date().getMonth();
+let selectedHistoryIsoDateFilter = null;
+
+function getRecordIsoDate(record) {
+  if (record.completedAtIso && record.completedAtIso.length >= 10) {
+    return record.completedAtIso.slice(0, 10);
+  }
+  if (record.id && String(record.id).startsWith('work_')) {
+    const ts = parseInt(String(record.id).replace('work_', ''), 10);
+    if (!isNaN(ts) && ts > 1600000000000) {
+      return new Date(ts).toISOString().slice(0, 10);
+    }
+  }
+  return null;
+}
+
+function renderConsistencyCalendar() {
+  const grid = document.getElementById('consistencyCalendarGrid');
+  const monthLabel = document.getElementById('calendarMonthLabel');
+  const monthSummary = document.getElementById('calendarMonthSummary');
+  const btnPrev = document.getElementById('btnCalPrevMonth');
+  const btnNext = document.getElementById('btnCalNextMonth');
+  const filterNotice = document.getElementById('calendarFilterNotice');
+  const filterText = document.getElementById('calendarFilterText');
+  const btnClearFilter = document.getElementById('btnClearCalendarFilter');
+
+  if (!grid || !monthLabel) return;
+
+  const monthNames = [
+    'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
+    'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'
+  ];
+  monthLabel.textContent = `${monthNames[currentCalendarMonth]} ${currentCalendarYear}`;
+
+  if (btnPrev) {
+    btnPrev.onclick = () => {
+      currentCalendarMonth -= 1;
+      if (currentCalendarMonth < 0) {
+        currentCalendarMonth = 11;
+        currentCalendarYear -= 1;
+      }
+      renderConsistencyCalendar();
+    };
+  }
+
+  if (btnNext) {
+    btnNext.onclick = () => {
+      currentCalendarMonth += 1;
+      if (currentCalendarMonth > 11) {
+        currentCalendarMonth = 0;
+        currentCalendarYear += 1;
+      }
+      renderConsistencyCalendar();
+    };
+  }
+
+  if (btnClearFilter) {
+    btnClearFilter.onclick = () => {
+      selectedHistoryIsoDateFilter = null;
+      renderHistory();
+    };
+  }
+
+  if (filterNotice && filterText) {
+    if (selectedHistoryIsoDateFilter) {
+      filterNotice.classList.remove('hidden');
+      filterText.textContent = `📌 Mostrando entrenamientos del ${selectedHistoryIsoDateFilter}`;
+    } else {
+      filterNotice.classList.add('hidden');
+    }
+  }
+
+  const sessionsByIsoDate = {};
+  (appState.workoutHistory || []).forEach(rec => {
+    const iso = getRecordIsoDate(rec);
+    if (iso) {
+      sessionsByIsoDate[iso] = (sessionsByIsoDate[iso] || 0) + 1;
+    }
+  });
+
+  grid.innerHTML = '';
+
+  const firstDayOfMonth = new Date(currentCalendarYear, currentCalendarMonth, 1);
+  const daysInMonth = new Date(currentCalendarYear, currentCalendarMonth + 1, 0).getDate();
+  // Convert Sunday (0) -> 6, Monday (1) -> 0
+  const startOffset = (firstDayOfMonth.getDay() + 6) % 7;
+
+  for (let i = 0; i < startOffset; i++) {
+    const emptyCell = document.createElement('div');
+    emptyCell.className = 'calendar-day-cell empty';
+    grid.appendChild(emptyCell);
+  }
+
+  const todayIso = new Date().toISOString().slice(0, 10);
+  let monthTrainedCount = 0;
+
+  for (let dayNum = 1; dayNum <= daysInMonth; dayNum++) {
+    const mStr = String(currentCalendarMonth + 1).padStart(2, '0');
+    const dStr = String(dayNum).padStart(2, '0');
+    const isoStr = `${currentCalendarYear}-${mStr}-${dStr}`;
+    const count = sessionsByIsoDate[isoStr] || 0;
+    if (count > 0) monthTrainedCount += count;
+
+    const cell = document.createElement('button');
+    cell.type = 'button';
+    cell.className = `calendar-day-cell ${isoStr === todayIso ? 'today' : ''} ${count > 0 ? 'trained' : ''} ${selectedHistoryIsoDateFilter === isoStr ? 'selected-filter' : ''}`;
+    cell.innerHTML = `<span>${dayNum}</span>`;
+    cell.setAttribute('aria-label', `${dayNum} de ${monthNames[currentCalendarMonth]}: ${count} sesiones`);
+
+    if (count > 0) {
+      cell.onclick = () => {
+        selectedHistoryIsoDateFilter = (selectedHistoryIsoDateFilter === isoStr) ? null : isoStr;
+        renderHistory();
+      };
+    }
+
+    grid.appendChild(cell);
+  }
+
+  if (monthSummary) {
+    monthSummary.textContent = `${monthTrainedCount} ${monthTrainedCount === 1 ? 'sesión completada' : 'sesiones completadas'} en ${monthNames[currentCalendarMonth]}`;
+  }
+}
+
 function renderHistory() {
+  renderConsistencyCalendar();
+
   const historyLogsContainer = document.getElementById('historyLogsContainer');
   if (!historyLogsContainer) return;
   historyLogsContainer.innerHTML = '';
@@ -5645,7 +6627,16 @@ function renderHistory() {
     return;
   }
 
-  appState.workoutHistory.forEach(record => {
+  const recordsToShow = selectedHistoryIsoDateFilter
+    ? appState.workoutHistory.filter(r => getRecordIsoDate(r) === selectedHistoryIsoDateFilter)
+    : appState.workoutHistory;
+
+  if (recordsToShow.length === 0) {
+    historyLogsContainer.innerHTML = '<div style="color: var(--text-muted); font-size: 13px; text-align: center; padding: 20px;">Sin entrenamientos en la fecha seleccionada.</div>';
+    return;
+  }
+
+  recordsToShow.forEach(record => {
     const mins = Math.floor(record.durationSeconds / 60);
     const item = document.createElement('div');
     item.className = 'history-item card';

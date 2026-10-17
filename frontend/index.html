@@ -109,22 +109,28 @@
 
       <!-- State 2: Active Workout in Progress -->
       <div id="workoutActiveScreen" class="hidden">
-        <!-- Active Workout Session Header -->
+        <!-- Active Workout Session Header (Sticky with Linear Progress) -->
         <div class="workout-session-header">
-          <div>
-            <div id="activeRoutineDayName" style="font-weight: 800; font-size: 16px; color: var(--accent-cyan);">Día 1:
-              Pierna</div>
-            <div id="workoutStartTime" style="font-size: 11px; color: var(--text-muted);">Inicio: --:--</div>
+          <div class="workout-session-top-row">
+            <div>
+              <div id="activeRoutineDayName" style="font-weight: 800; font-size: 15px; color: var(--accent-cyan);">Día 1:
+                Pierna</div>
+              <div id="workoutStartTime" style="font-size: 11px; color: var(--text-muted);">Inicio: --:--</div>
+            </div>
+            <div style="text-align: right;">
+              <div id="sessionTimerDisplay" class="workout-timer-display" style="font-size: 23px; margin: 0;">00:00:00
+              </div>
+              <div style="display: flex; gap: 5px; margin-top: 4px; justify-content: flex-end; flex-wrap: wrap;">
+                <button id="btnToggleWakeLock" class="btn btn-secondary btn-sm" title="Mantener pantalla encendida durante el entrenamiento" aria-label="Mantener pantalla encendida">☀️ Pantalla</button>
+                <button id="btnTogglePushNotifications" class="btn btn-secondary btn-sm" title="Activar notificaciones Push de descanso" aria-label="Activar notificaciones Push para el tiempo de descanso">🔔 Push</button>
+                <button id="btnOpenPlateCalcHeader" class="btn btn-secondary btn-sm" title="Calculadora de discos" aria-label="Abrir calculadora de discos">🧮 Discos</button>
+                <button id="btnPauseWorkout" class="btn btn-secondary btn-sm">Pausar</button>
+                <button id="btnEndWorkout" class="btn btn-danger btn-sm">Finalizar</button>
+              </div>
+            </div>
           </div>
-          <div style="text-align: right;">
-            <div id="sessionTimerDisplay" class="workout-timer-display" style="font-size: 24px; margin: 0;">00:00:00
-            </div>
-            <div style="display: flex; gap: 6px; margin-top: 4px; justify-content: flex-end; flex-wrap: wrap;">
-              <button id="btnTogglePushNotifications" class="btn btn-secondary btn-sm" title="Activar notificaciones Push de descanso" aria-label="Activar notificaciones Push para el tiempo de descanso">🔔 Push</button>
-              <button id="btnOpenPlateCalcHeader" class="btn btn-secondary btn-sm" title="Calculadora de discos" aria-label="Abrir calculadora de discos">🧮 Discos</button>
-              <button id="btnPauseWorkout" class="btn btn-secondary btn-sm">Pausar</button>
-              <button id="btnEndWorkout" class="btn btn-danger btn-sm">Finalizar</button>
-            </div>
+          <div class="workout-linear-progress" role="progressbar" aria-label="Progreso de series de la sesión" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" id="workoutLinearProgressBar">
+            <div class="workout-linear-progress-fill" id="workoutLinearProgressFill"></div>
           </div>
         </div>
 
@@ -250,6 +256,31 @@
     <!-- TAB 4: HISTORIAL Y REGISTROS -->
     <!-- =================================================================== -->
     <section id="tab-history" class="tab-content" aria-label="Historial de Entrenamientos">
+      <!-- Monthly Consistency Calendar (Strava / GitHub Style) -->
+      <div class="card" id="historyConsistencyCalendarCard">
+        <div class="consistency-calendar-header">
+          <div>
+            <span style="font-family: var(--font-heading); font-weight: 800; font-size: 16px; color: #fff;">📅 Calendario de Consistencia</span>
+            <div id="calendarMonthSummary" style="font-size: 11px; color: var(--accent-green); font-weight: 600; margin-top: 2px;">0 sesiones este mes</div>
+          </div>
+          <div style="display: flex; align-items: center; gap: 6px;">
+            <button type="button" id="btnCalPrevMonth" class="btn btn-secondary btn-sm" style="padding: 4px 10px;" aria-label="Mes anterior">◀</button>
+            <span id="calendarMonthLabel" style="font-size: 13px; font-weight: 700; min-width: 105px; text-align: center; color: var(--accent-cyan);">--</span>
+            <button type="button" id="btnCalNextMonth" class="btn btn-secondary btn-sm" style="padding: 4px 10px;" aria-label="Mes siguiente">▶</button>
+          </div>
+        </div>
+        <div class="consistency-calendar-weekdays" aria-hidden="true">
+          <span>Lun</span><span>Mar</span><span>Mié</span><span>Jue</span><span>Vie</span><span>Sáb</span><span>Dom</span>
+        </div>
+        <div id="consistencyCalendarGrid" class="consistency-calendar-grid">
+          <!-- Populated via JS -->
+        </div>
+        <div id="calendarFilterNotice" class="hidden" style="margin-top: 8px; display: flex; justify-content: space-between; align-items: center; font-size: 11px; color: var(--accent-cyan); background: rgba(0,242,254,0.08); padding: 5px 10px; border-radius: 6px;">
+          <span id="calendarFilterText">Filtrando por día</span>
+          <button type="button" id="btnClearCalendarFilter" class="btn btn-secondary btn-sm" style="padding: 2px 8px; font-size: 10px;">Ver Todos ✕</button>
+        </div>
+      </div>
+
       <div class="card">
         <div class="card-title">
           <span>📜 Historial de Entrenamientos</span>
@@ -282,6 +313,16 @@
         </div>
         <div id="prsContainer" style="display: flex; gap: 8px; overflow-x: auto; padding-bottom: 4px;">
           <!-- Populated via JS -->
+        </div>
+      </div>
+
+      <!-- Interactive Anatomical SVG Muscle Heatmap Card -->
+      <div class="card" id="muscleHeatmapCard">
+        <div class="card-title">
+          <span>🧬 Mapa de Calor Muscular (Series Efectivas)</span>
+        </div>
+        <div id="muscleHeatmapContainer">
+          <!-- Populated via JS in analytics.js -->
         </div>
       </div>
 
@@ -326,18 +367,32 @@
     <!-- FLOATING REST TIMER BANNER -->
     <!-- =================================================================== -->
     <div id="restTimerBanner" class="rest-timer-banner hidden" role="timer" aria-live="off">
-      <div class="rest-timer-info">
-        <div style="font-size: 11px; color: var(--text-muted); text-transform: uppercase; display: flex; align-items: center; gap: 4px;">
-          <span>Descanso</span>
-          <span id="restPushStatusBadge" style="font-size: 10px; color: var(--accent-cyan);"></span>
+      <div class="rest-timer-main-row">
+        <div class="rest-timer-info">
+          <div>
+            <div style="font-size: 10px; color: var(--text-muted); text-transform: uppercase; display: flex; align-items: center; gap: 4px;">
+              <span>Descanso</span>
+              <span id="restPushStatusBadge" style="font-size: 10px; color: var(--accent-cyan);"></span>
+            </div>
+            <div id="restTimerExerciseLabel" style="font-size: 11px; color: #fff; font-weight: 600; max-width: 130px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">Siguiente serie</div>
+          </div>
+          <div id="restTimerSeconds" class="rest-timer-seconds">60s</div>
         </div>
-        <div id="restTimerSeconds" class="rest-timer-seconds">60s</div>
+        <div class="rest-timer-controls">
+          <button id="btnRestPushToggle" class="btn btn-secondary btn-sm" title="Activar alerta Push en segundo plano" aria-label="Activar alerta Push en segundo plano">🔔</button>
+          <button id="btnRestMinus15" class="btn btn-secondary btn-sm" aria-label="Restar 15 segundos al descanso">-15s</button>
+          <button id="btnRestPlus15" class="btn btn-secondary btn-sm" aria-label="Sumar 15 segundos al descanso">+15s</button>
+          <button id="btnRestSkip" class="btn btn-primary btn-sm" aria-label="Saltar tiempo de descanso">Saltar</button>
+        </div>
       </div>
-      <div class="rest-timer-controls">
-        <button id="btnRestPushToggle" class="btn btn-secondary btn-sm" title="Activar alerta Push en segundo plano" aria-label="Activar alerta Push en segundo plano">🔔</button>
-        <button id="btnRestMinus15" class="btn btn-secondary btn-sm" aria-label="Restar 15 segundos al descanso">-15s</button>
-        <button id="btnRestPlus15" class="btn btn-secondary btn-sm" aria-label="Sumar 15 segundos al descanso">+15s</button>
-        <button id="btnRestSkip" class="btn btn-primary btn-sm" aria-label="Saltar tiempo de descanso">Saltar</button>
+      <div class="rest-preset-pills" aria-label="Preselecciones rápidas de descanso">
+        <button type="button" class="btn-rest-preset" data-rest="60">60s</button>
+        <button type="button" class="btn-rest-preset" data-rest="90">90s</button>
+        <button type="button" class="btn-rest-preset" data-rest="120">2m</button>
+        <button type="button" class="btn-rest-preset" data-rest="180">3m</button>
+      </div>
+      <div class="rest-timer-progress-track" aria-hidden="true">
+        <div id="restTimerProgressFill" class="rest-timer-progress-fill"></div>
       </div>
     </div>
 
@@ -737,6 +792,42 @@
           🎨 Ilustraciones técnicas licenciadas bajo <a href="https://creativecommons.org/licenses/by-sa/4.0/"
             target="_blank" rel="noopener noreferrer" style="color: var(--accent-blue); text-decoration: underline;">CC BY-SA 4.0</a> (Everkinetic
           &amp; Bryl Lim).
+        </div>
+      </div>
+    </div>
+
+    <!-- =================================================================== -->
+    <!-- MODAL: Celebración y Resumen Post-Entrenamiento -->
+    <!-- =================================================================== -->
+    <div id="workoutSummaryModal" class="modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="workoutSummaryTitle">
+      <div class="modal-card card" style="max-width: 420px; width: 92%; text-align: center; border-color: var(--accent-green);">
+        <div style="font-size: 40px; margin-bottom: 4px;" aria-hidden="true">🏆</div>
+        <h3 id="workoutSummaryTitle" style="font-family: var(--font-heading); font-size: 21px; font-weight: 800; color: #fff; margin: 0;">¡Entrenamiento Completado!</h3>
+        <div id="workoutSummarySubtitle" style="font-size: 13px; color: var(--accent-cyan); font-weight: 700; margin-top: 4px;">Día 1</div>
+
+        <div class="summary-stat-grid">
+          <div class="summary-stat-box">
+            <div id="summaryDurationVal" class="summary-stat-val">0m</div>
+            <div class="summary-stat-lbl">Duración</div>
+          </div>
+          <div class="summary-stat-box">
+            <div id="summarySetsVal" class="summary-stat-val">0</div>
+            <div class="summary-stat-lbl">Series</div>
+          </div>
+          <div class="summary-stat-box">
+            <div id="summaryVolumeVal" class="summary-stat-val">0 kg</div>
+            <div class="summary-stat-lbl">Volumen</div>
+          </div>
+        </div>
+
+        <div id="summaryPRsBox" class="hidden" style="background: rgba(255, 215, 0, 0.1); border: 1px solid rgba(255, 215, 0, 0.35); border-radius: var(--radius-sm); padding: 10px; margin-bottom: 14px; text-align: left;">
+          <div style="font-size: 12px; font-weight: 800; color: #ffd700; margin-bottom: 6px;">🔥 Nuevos Récords Personales (PRs) Hoy:</div>
+          <div id="summaryPRsList" style="display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: #fff;"></div>
+        </div>
+
+        <div style="display: flex; gap: 8px;">
+          <button type="button" id="btnShareWorkoutSummary" class="btn btn-secondary btn-sm" style="flex: 1;">📋 Copiar Resumen</button>
+          <button type="button" id="btnCloseWorkoutSummary" class="btn btn-primary btn-sm" style="flex: 1;">¡Excelente! 💪</button>
         </div>
       </div>
     </div>

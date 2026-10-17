@@ -180,8 +180,9 @@ body {
   bottom: 0;
   left: 0;
   right: 0;
-  height: 70px;
-  background: rgba(15, 22, 36, 0.92);
+  min-height: 70px;
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+  background: rgba(15, 22, 36, 0.94);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
   border-top: 1px solid var(--border-color);
@@ -356,14 +357,45 @@ body {
 
 /* Live Workout Session View */
 .workout-session-header {
-  background: var(--bg-card-solid);
+  position: sticky;
+  top: 66px;
+  z-index: 90;
+  background: rgba(19, 27, 46, 0.94);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
   border-radius: var(--radius-md);
-  padding: 14px;
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 16px;
+  border: 1px solid var(--glass-border);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+}
+
+.workout-session-top-row {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 16px;
-  border: 1px solid var(--glass-border);
+  gap: 8px;
+}
+
+.workout-linear-progress {
+  width: 100%;
+  height: 6px;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 999px;
+  overflow: hidden;
+  position: relative;
+}
+
+.workout-linear-progress-fill {
+  height: 100%;
+  width: 0%;
+  background: linear-gradient(90deg, var(--accent-cyan), var(--accent-green));
+  border-radius: 999px;
+  transition: width 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+  box-shadow: 0 0 10px rgba(0, 230, 118, 0.5);
 }
 
 .exercise-live-card {
@@ -372,11 +404,39 @@ body {
   border-radius: var(--radius-lg);
   padding: 16px;
   margin-bottom: 16px;
+  transition: border-color 0.25s ease, background 0.25s ease, padding 0.2s ease;
 }
 
 .exercise-live-card.completed {
-  border-color: rgba(0, 230, 118, 0.4);
-  background: rgba(0, 230, 118, 0.03);
+  border-color: rgba(0, 230, 118, 0.45);
+  background: rgba(0, 230, 118, 0.04);
+}
+
+.exercise-live-card.collapsed-card {
+  padding: 12px 16px;
+}
+
+.exercise-live-card.collapsed-card .exercise-collapsible-body {
+  display: none;
+}
+
+.exercise-collapsed-summary {
+  display: none;
+  font-size: 12px;
+  color: var(--accent-green);
+  font-weight: 600;
+  margin-top: 4px;
+  padding: 6px 10px;
+  border-radius: var(--radius-sm);
+  background: rgba(0, 230, 118, 0.08);
+  border: 1px solid rgba(0, 230, 118, 0.2);
+  cursor: pointer;
+}
+
+.exercise-live-card.collapsed-card .exercise-collapsed-summary {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
 }
 
 .exercise-live-title {
@@ -391,8 +451,8 @@ body {
 /* Set Table */
 .set-row {
   display: grid;
-  grid-template-columns: 36px 1fr 1fr 50px;
-  gap: 10px;
+  grid-template-columns: 36px 1fr 1fr 48px;
+  gap: 8px;
   align-items: center;
   padding: 8px 0;
   border-bottom: 1px solid rgba(255, 255, 255, 0.05);
@@ -426,18 +486,19 @@ body {
   border: 1px solid var(--border-color);
   border-radius: var(--radius-sm);
   color: #fff;
-  padding: 8px;
+  padding: 8px 4px;
   font-size: 16px;
   font-weight: 700;
   text-align: center;
   width: 100%;
+  min-width: 0;
 }
 
-/* Stepper +/- controls for weight and reps */
+/* Stepper +/- controls for weight and reps (WCAG 2.2 Touch Targets) */
 .stepper-group {
   display: flex;
   align-items: center;
-  gap: 2px;
+  gap: 4px;
 }
 
 .btn-step {
@@ -445,9 +506,9 @@ body {
   border: 1px solid var(--border-color);
   color: var(--text-main);
   border-radius: var(--radius-sm);
-  width: 28px;
-  height: 36px;
-  font-size: 16px;
+  width: 34px;
+  height: 38px;
+  font-size: 17px;
   font-weight: 800;
   display: flex;
   align-items: center;
@@ -487,8 +548,8 @@ body {
   border: 1px solid var(--border-color);
   color: var(--text-main);
   border-radius: 4px;
-  width: 26px;
-  height: 26px;
+  width: 28px;
+  height: 28px;
   font-size: 11px;
   display: inline-flex;
   align-items: center;
@@ -612,23 +673,74 @@ body {
 /* Rest Timer Overlay (Floating at Bottom above nav) */
 .rest-timer-banner {
   position: fixed;
-  bottom: 75px;
+  bottom: calc(76px + env(safe-area-inset-bottom, 0px));
   left: 12px;
   right: 12px;
   max-width: 576px;
   margin: 0 auto;
-  background: rgba(19, 27, 46, 0.95);
+  background: rgba(15, 22, 38, 0.97);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
   border: 1px solid var(--accent-cyan);
   border-radius: var(--radius-md);
-  padding: 12px 16px;
+  padding: 10px 14px 14px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  box-shadow: 0 10px 34px rgba(0, 242, 254, 0.28);
+  z-index: 999;
+  animation: slideUp 0.3s ease;
+  overflow: hidden;
+}
+
+.rest-timer-main-row {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  box-shadow: 0 8px 30px rgba(0, 242, 254, 0.25);
-  z-index: 999;
-  animation: slideUp 0.3s ease;
+  gap: 8px;
+}
+
+.rest-preset-pills {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+}
+
+.btn-rest-preset {
+  flex: 1;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--border-color);
+  color: var(--text-muted);
+  border-radius: 6px;
+  padding: 3px 6px;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.btn-rest-preset:hover,
+.btn-rest-preset.active {
+  background: rgba(0, 242, 254, 0.16);
+  border-color: var(--accent-cyan);
+  color: var(--accent-cyan);
+}
+
+.rest-timer-progress-track {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.rest-timer-progress-fill {
+  height: 100%;
+  width: 100%;
+  background: var(--accent-cyan);
+  transition: width 0.35s linear, background-color 0.3s ease;
 }
 
 @keyframes slideUp {
@@ -1429,3 +1541,175 @@ input:focus-visible,
     border-radius: 50%;
   }
 }
+
+/* ==========================================================================
+   Catalog SVG Thumbnail, Monthly Consistency Calendar, Muscle Heatmap & Summary
+   ========================================================================== */
+
+.catalog-svg-thumb {
+  width: 52px;
+  height: 52px;
+  border-radius: 12px;
+  background: radial-gradient(circle at center, rgba(0, 242, 254, 0.14), rgba(9, 13, 22, 0.9));
+  border: 1px solid var(--glass-border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  overflow: hidden;
+  cursor: pointer;
+}
+
+.catalog-svg-thumb img {
+  width: 44px;
+  height: 44px;
+  object-fit: contain;
+  filter: drop-shadow(0 2px 6px rgba(0, 242, 254, 0.25));
+}
+
+/* Monthly Consistency Calendar */
+.consistency-calendar-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.consistency-calendar-weekdays {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 4px;
+  text-align: center;
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--text-muted);
+  margin-bottom: 6px;
+  text-transform: uppercase;
+}
+
+.consistency-calendar-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 5px;
+}
+
+.calendar-day-cell {
+  aspect-ratio: 1;
+  min-height: 34px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-muted);
+  position: relative;
+  transition: all 0.15s ease;
+}
+
+.calendar-day-cell.empty {
+  background: transparent;
+  border-color: transparent;
+}
+
+.calendar-day-cell.today {
+  border-color: var(--accent-cyan);
+  color: #fff;
+}
+
+.calendar-day-cell.trained {
+  background: rgba(0, 230, 118, 0.18);
+  border-color: var(--accent-green);
+  color: var(--accent-green);
+  font-weight: 800;
+  cursor: pointer;
+  box-shadow: 0 0 10px rgba(0, 230, 118, 0.15);
+}
+
+.calendar-day-cell.trained:hover,
+.calendar-day-cell.selected-filter {
+  background: var(--accent-green);
+  color: #050b14;
+  transform: scale(1.06);
+}
+
+/* Anatomical SVG Muscle Heatmap */
+.muscle-heatmap-wrapper {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  align-items: center;
+  justify-items: center;
+  padding: 10px 6px;
+  background: radial-gradient(circle at center, rgba(0, 242, 254, 0.06), rgba(9, 13, 22, 0.65));
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-color);
+}
+
+.body-svg-figure {
+  width: 100%;
+  max-width: 145px;
+  height: auto;
+  overflow: visible;
+}
+
+.body-svg-figure .muscle-zone {
+  transition: fill 0.35s ease, filter 0.35s ease, stroke 0.35s ease;
+  cursor: pointer;
+}
+
+.body-svg-figure .muscle-zone:hover {
+  filter: brightness(1.25) drop-shadow(0 0 8px rgba(0, 242, 254, 0.6));
+}
+
+.heatmap-muscle-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 10px;
+  justify-content: center;
+}
+
+/* Post-Workout Celebration Summary Modal */
+.summary-stat-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  margin: 14px 0;
+}
+
+.summary-stat-box {
+  background: var(--bg-input);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-sm);
+  padding: 10px 6px;
+  text-align: center;
+}
+
+.summary-stat-val {
+  font-family: var(--font-heading);
+  font-size: 20px;
+  font-weight: 800;
+  color: var(--accent-cyan);
+}
+
+.summary-stat-lbl {
+  font-size: 10px;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  margin-top: 2px;
+}
+
+@keyframes prPulseGlow {
+  0% { box-shadow: 0 0 6px rgba(255, 215, 0, 0.4); transform: scale(1); }
+  50% { box-shadow: 0 0 18px rgba(255, 215, 0, 0.9); transform: scale(1.08); }
+  100% { box-shadow: 0 0 6px rgba(255, 215, 0, 0.4); transform: scale(1); }
+}
+
+.pr-live-badge {
+  animation: prPulseGlow 2s infinite ease-in-out;
+}
+
