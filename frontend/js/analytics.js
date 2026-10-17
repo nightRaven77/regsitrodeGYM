@@ -5,6 +5,17 @@
 let overloadChart = null;
 let weeklyVolumeChart = null;
 let muscleDistributionChart = null;
+let analyticsFilterDays = 0; // 0 = All time, 30 = 30 days, 7 = 7 days
+
+function escapeAnalyticsHTML(str) {
+  if (str === null || str === undefined) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
 
 // Formula for Estimated 1RM (Epley Formula): 1RM = Weight * (1 + Reps / 30)
 function calculate1RM(weight, reps) {
@@ -14,11 +25,45 @@ function calculate1RM(weight, reps) {
   return Math.round(weight * (1 + reps / 30));
 }
 
+function getFilteredWorkoutHistory() {
+  const history = (typeof appState !== 'undefined' && Array.isArray(appState.workoutHistory))
+    ? appState.workoutHistory
+    : [];
+  if (!analyticsFilterDays || analyticsFilterDays <= 0) {
+    return history;
+  }
+  const cutoffMs = Date.now() - (analyticsFilterDays * 24 * 60 * 60 * 1000);
+  return history.filter((record, index) => {
+    if (record.completedAtIso) {
+      const ts = new Date(record.completedAtIso).getTime();
+      if (!isNaN(ts)) return ts >= cutoffMs;
+    }
+    if (record.id && String(record.id).startsWith('work_')) {
+      const idTs = parseInt(String(record.id).replace('work_', ''), 10);
+      if (!isNaN(idTs) && idTs > 1600000000000) {
+        return idTs >= cutoffMs;
+      }
+    }
+    return index < analyticsFilterDays;
+  });
+}
+
 function initAnalytics() {
   try {
     const analyticsExSelect = document.getElementById('analyticsExSelect');
     if (!analyticsExSelect) return;
 
+    const periodPills = document.querySelectorAll('#analyticsPeriodFilters .filter-pill');
+    periodPills.forEach(pill => {
+      pill.onclick = () => {
+        periodPills.forEach(p => p.classList.remove('active'));
+        pill.classList.add('active');
+        analyticsFilterDays = parseInt(pill.getAttribute('data-days'), 10) || 0;
+        renderAnalyticsDashboard();
+      };
+    });
+
+    const previousVal = analyticsExSelect.value;
     analyticsExSelect.innerHTML = '';
 
     const loggedExNames = new Set();
@@ -48,6 +93,10 @@ function initAnalytics() {
       }
     });
 
+    if (previousVal && Array.from(analyticsExSelect.options).some(o => o.value === previousVal)) {
+      analyticsExSelect.value = previousVal;
+    }
+
     analyticsExSelect.onchange = (e) => {
       try {
         renderOverloadChart(e.target.value);
@@ -65,12 +114,13 @@ function initAnalytics() {
 function renderAnalyticsDashboard() {
   try {
     renderPRsSummary();
-    
+
     const analyticsExSelect = document.getElementById('analyticsExSelect');
     let selectedExName = (analyticsExSelect && analyticsExSelect.value) ? analyticsExSelect.value : null;
 
-    if (!selectedExName && appState.workoutHistory && appState.workoutHistory.length > 0) {
-      const firstRecord = appState.workoutHistory[0];
+    const filteredHistory = getFilteredWorkoutHistory();
+    if (!selectedExName && filteredHistory.length > 0) {
+      const firstRecord = filteredHistory[0];
       if (firstRecord.detailedExercises && firstRecord.detailedExercises.length > 0) {
         selectedExName = firstRecord.detailedExercises[0].name;
       }
@@ -88,27 +138,29 @@ function renderAnalyticsDashboard() {
   }
 }
 
-// 1. Personal Records (PRs) Cards
+// 1. Personal Records (PRs) Cards (excludes Warm-up 'W' sets)
 function renderPRsSummary() {
   const prsContainer = document.getElementById('prsContainer');
   if (!prsContainer) return;
   prsContainer.innerHTML = '';
 
   const prsMap = {};
+  const filteredHistory = getFilteredWorkoutHistory();
 
-  // Traversal of completed workout history
-  if (appState.workoutHistory && appState.workoutHistory.length > 0) {
-    appState.workoutHistory.forEach(record => {
+  if (filteredHistory.length > 0) {
+    filteredHistory.forEach(record => {
       if (record.detailedExercises) {
         record.detailedExercises.forEach(ex => {
           if (!prsMap[ex.name]) {
             prsMap[ex.name] = { maxWeight: 0, max1RM: 0, category: ex.category };
           }
-          ex.sets.forEach(set => {
-            if (set.weight > prsMap[ex.name].maxWeight) {
-              prsMap[ex.name].maxWeight = set.weight;
+          (ex.sets || []).forEach(set => {
+            if (set.setType === 'W') return; // Warm-up sets excluded from effective PRs
+            const wKg = set.weightKg !== undefined ? set.weightKg : set.weight;
+            if (wKg > prsMap[ex.name].maxWeight) {
+              prsMap[ex.name].maxWeight = wKg;
             }
-            const e1RM = calculate1RM(set.weight, set.actualReps);
+            const e1RM = calculate1RM(wKg, set.actualReps);
             if (e1RM > prsMap[ex.name].max1RM) {
               prsMap[ex.name].max1RM = e1RM;
             }
@@ -132,8 +184,9 @@ function renderPRsSummary() {
   topPRs.forEach(pr => {
     const card = document.createElement('div');
     card.style.cssText = 'background: var(--bg-input); border: 1px solid var(--glass-border); border-radius: var(--radius-sm); padding: 10px 12px; flex: 1; min-width: 130px; text-align: center;';
+    const safeName = escapeAnalyticsHTML(pr.name);
     card.innerHTML = `
-      <div style="font-size: 11px; color: var(--text-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${pr.name}</div>
+      <div style="font-size: 11px; color: var(--text-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${safeName}">${safeName}</div>
       <div style="font-family: var(--font-heading); font-size: 20px; font-weight: 800; color: var(--accent-cyan); margin: 2px 0;">
         ${pr.maxWeight} <span style="font-size: 12px; font-weight: 600; color: #fff;">kg</span>
       </div>
@@ -148,25 +201,29 @@ function renderOverloadChart(exerciseName) {
   const canvas = document.getElementById('overloadChartCanvas');
   if (!canvas) return;
 
-  const targetEx = DEFAULT_EXERCISES_CATALOG.find(ex => ex.id === exerciseName || ex.name.toLowerCase() === (exerciseName || '').toLowerCase());
+  const targetEx = DEFAULT_EXERCISES_CATALOG.find(
+    ex => ex.id === exerciseName || ex.name.toLowerCase() === (exerciseName || '').toLowerCase()
+  );
   const exName = exerciseName || (targetEx ? targetEx.name : (DEFAULT_EXERCISES_CATALOG[0] ? DEFAULT_EXERCISES_CATALOG[0].name : ''));
 
   const labels = [];
   const maxWeights = [];
   const est1RMs = [];
+  const filteredHistory = getFilteredWorkoutHistory();
 
-  if (appState.workoutHistory && appState.workoutHistory.length > 0) {
-    // Traverse from oldest to newest for chronological chart line
-    [...appState.workoutHistory].reverse().forEach(record => {
+  if (filteredHistory.length > 0) {
+    [...filteredHistory].reverse().forEach(record => {
       if (record.detailedExercises) {
         const foundEx = record.detailedExercises.find(e => e.name.toLowerCase() === exName.toLowerCase());
-        if (foundEx && foundEx.sets.length > 0) {
+        if (foundEx && foundEx.sets && foundEx.sets.length > 0) {
           let dayMaxW = 0;
           let dayMax1RM = 0;
 
           foundEx.sets.forEach(s => {
-            if (s.weight > dayMaxW) dayMaxW = s.weight;
-            const e1RM = calculate1RM(s.weight, s.actualReps);
+            if (s.setType === 'W') return;
+            const wKg = s.weightKg !== undefined ? s.weightKg : s.weight;
+            if (wKg > dayMaxW) dayMaxW = wKg;
+            const e1RM = calculate1RM(wKg, s.actualReps);
             if (e1RM > dayMax1RM) dayMax1RM = e1RM;
           });
 
@@ -233,9 +290,10 @@ function renderWeeklyVolumeChart() {
 
   const labels = [];
   const volumes = [];
+  const filteredHistory = getFilteredWorkoutHistory();
 
-  if (appState.workoutHistory && appState.workoutHistory.length > 0) {
-    [...appState.workoutHistory].slice(0, 7).reverse().forEach(record => {
+  if (filteredHistory.length > 0) {
+    [...filteredHistory].slice(0, 7).reverse().forEach(record => {
       labels.push(record.dateFormatted);
       volumes.push(record.totalVolumeKg || 0);
     });
@@ -279,13 +337,15 @@ function renderMuscleDistributionChart() {
   const muscleCounts = {
     'Pierna': 0, 'Pectoral': 0, 'Espalda': 0, 'Hombro': 0, 'Bíceps': 0, 'Tríceps': 0, 'Abdomen': 0
   };
+  const filteredHistory = getFilteredWorkoutHistory();
 
-  if (appState.workoutHistory && appState.workoutHistory.length > 0) {
-    appState.workoutHistory.forEach(record => {
+  if (filteredHistory.length > 0) {
+    filteredHistory.forEach(record => {
       if (record.detailedExercises) {
         record.detailedExercises.forEach(ex => {
           if (muscleCounts[ex.category] !== undefined) {
-            muscleCounts[ex.category] += ex.sets.length;
+            const effectiveSets = (ex.sets || []).filter(s => s.setType !== 'W');
+            muscleCounts[ex.category] += effectiveSets.length;
           }
         });
       }

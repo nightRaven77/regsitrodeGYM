@@ -3,7 +3,7 @@
 
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>My GymTracker</title>
   <meta name="theme-color" content="#090d16">
   <meta name="apple-mobile-web-app-capable" content="yes">
@@ -22,17 +22,20 @@
   <!-- App Header -->
   <header class="app-header">
     <div class="brand">
-      <img src="assets/icon.jpg" alt="Logo" class="brand-logo-img">
-      <div class="brand-text">My <span style="font-size:12px; opacity:0.6; font-weight:400;">Gym Tracker</span></div>
+      <img src="assets/icon.jpg" alt="Logo de My Gym Tracker" class="brand-logo-img">
+      <div class="brand-text">
+        <span class="brand-prefix">My</span>
+        <span class="brand-highlight">Gym Tracker</span>
+      </div>
     </div>
-    <div style="display: flex; align-items: center; gap: 8px;">
-      <button id="btnProfileSelect" class="profile-pill-btn">
-        <span id="activeProfileAvatar">👤</span>
+    <div class="header-actions">
+      <button id="btnProfileSelect" class="profile-pill-btn" aria-label="Seleccionar o gestionar perfil de usuario">
+        <span id="activeProfileAvatar" aria-hidden="true">👤</span>
         <span id="activeProfileName">—</span>
-        <span style="font-size: 10px; opacity: 0.6;">▼</span>
+        <span class="profile-arrow" aria-hidden="true">▼</span>
       </button>
-      <div id="headerStatus" class="header-status">
-        <div class="status-dot"></div>
+      <div id="headerStatus" class="header-status" role="status" aria-live="polite">
+        <div class="status-dot" aria-hidden="true"></div>
         <span id="statusText">Listo</span>
       </div>
     </div>
@@ -44,10 +47,24 @@
     <!-- =================================================================== -->
     <!-- TAB 1: ENTRENAR (Workout Session) -->
     <!-- =================================================================== -->
-    <section id="tab-train" class="tab-content active">
+    <section id="tab-train" class="tab-content active" aria-label="Entrenamiento">
 
       <!-- State 1: No active workout -->
       <div id="workoutStartScreen">
+        <!-- Weekly Streak & Consistency Strip -->
+        <div id="weeklyStreakCard" class="card streak-banner-card" style="padding: 12px 16px; margin-bottom: 14px;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+            <div style="display: flex; align-items: center; gap: 6px; font-weight: 800; font-size: 13px; color: #fff;">
+              <span aria-hidden="true">🔥</span>
+              <span id="streakTitleText">Constancia Semanal</span>
+            </div>
+            <span id="streakCountBadge" class="badge badge-espalda">0 esta semana</span>
+          </div>
+          <div id="weekDaysStrip" class="week-days-strip" role="list" aria-label="Actividad de los últimos 7 días">
+            <!-- Populated via JS -->
+          </div>
+        </div>
+
         <div class="workout-hero-card">
           <h2 style="font-family: var(--font-heading); font-size: 24px; font-weight: 800; margin-bottom: 6px;">
             ¡Hora de Entrenar! 💪
@@ -57,21 +74,21 @@
           </p>
 
           <div class="form-group" style="text-align: left;">
-            <label class="form-label">Seleccionar Rutina Activa:</label>
+            <label for="routineSelect" class="form-label">Seleccionar Rutina Activa:</label>
             <select id="routineSelect" class="form-control">
               <!-- Populated via JS -->
             </select>
           </div>
 
           <div class="form-group" style="text-align: left;">
-            <label class="form-label">Seleccionar Día de Hoy:</label>
+            <label for="daySelect" class="form-label">Seleccionar Día de Hoy:</label>
             <select id="daySelect" class="form-control">
               <!-- Populated via JS -->
             </select>
           </div>
 
           <button id="btnStartWorkout" class="btn btn-primary mt-2">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
               <path d="M8 5v14l11-7z" />
             </svg>
             Iniciar Sesión de Entrenamiento
@@ -102,7 +119,9 @@
           <div style="text-align: right;">
             <div id="sessionTimerDisplay" class="workout-timer-display" style="font-size: 24px; margin: 0;">00:00:00
             </div>
-            <div style="display: flex; gap: 6px; margin-top: 4px;">
+            <div style="display: flex; gap: 6px; margin-top: 4px; justify-content: flex-end; flex-wrap: wrap;">
+              <button id="btnTogglePushNotifications" class="btn btn-secondary btn-sm" title="Activar notificaciones Push de descanso" aria-label="Activar notificaciones Push para el tiempo de descanso">🔔 Push</button>
+              <button id="btnOpenPlateCalcHeader" class="btn btn-secondary btn-sm" title="Calculadora de discos" aria-label="Abrir calculadora de discos">🧮 Discos</button>
               <button id="btnPauseWorkout" class="btn btn-secondary btn-sm">Pausar</button>
               <button id="btnEndWorkout" class="btn btn-danger btn-sm">Finalizar</button>
             </div>
@@ -118,7 +137,7 @@
         <div id="workoutBottomActionsCard" class="card"
           style="margin-top: 16px; margin-bottom: 80px; text-align: center; border-color: var(--accent-green); background: rgba(0, 230, 118, 0.05);">
           <div id="workoutCompletionBanner" style="margin-bottom: 12px;">
-            <span style="font-size: 20px;">💪</span>
+            <span style="font-size: 20px;" aria-hidden="true">💪</span>
             <h4 id="workoutCompletionTitle" style="color: #fff; margin: 4px 0 2px 0; font-size: 15px;">Progreso de
               Entrenamiento</h4>
             <p id="workoutCompletionSubtitle" style="font-size: 12px; color: var(--text-muted); margin: 0;">Completa tus
@@ -143,15 +162,28 @@
     <!-- =================================================================== -->
     <!-- TAB 2: RUTINAS (Routine Configurator) -->
     <!-- =================================================================== -->
-    <section id="tab-routines" class="tab-content">
+    <section id="tab-routines" class="tab-content" aria-label="Configurar Rutinas">
       <div class="card">
         <div class="card-title">
           <span>Configurar Rutina</span>
           <button id="btnNewRoutine" class="btn btn-primary btn-sm">+ Nueva</button>
         </div>
-        <p style="color: var(--text-muted); font-size: 13px; margin-bottom: 14px;">
-          Personaliza los días de entrenamiento, grupo de músculos y ejercicios asignados.
+        <p style="color: var(--text-muted); font-size: 13px; margin-bottom: 12px;">
+          Personaliza tus días, series objetivo y grupo muscular, o importa una plantilla probada en 1 clic:
         </p>
+
+        <!-- Quick Routine Templates Bar -->
+        <div class="templates-quick-bar" style="display: flex; gap: 6px; overflow-x: auto; padding-bottom: 8px; margin-bottom: 12px;">
+          <button class="btn btn-secondary btn-sm btn-template-preset" data-template="ppl" style="white-space: nowrap; font-size: 11px;">
+            ⚡ Plantilla PPL (3 Días)
+          </button>
+          <button class="btn btn-secondary btn-sm btn-template-preset" data-template="upper_lower" style="white-space: nowrap; font-size: 11px;">
+            🔥 Upper / Lower (4 Días)
+          </button>
+          <button class="btn btn-secondary btn-sm btn-template-preset" data-template="full_body" style="white-space: nowrap; font-size: 11px;">
+            🏋️ Full Body (3 Días)
+          </button>
+        </div>
 
         <div id="routinesListContainer">
           <!-- Populated via JS -->
@@ -162,11 +194,11 @@
       <div id="routineEditorCard" class="card hidden">
         <div class="card-title">
           <span id="editorTitle">Editar Rutina</span>
-          <button id="btnCloseEditor" class="btn btn-secondary btn-sm">✕ Cerrar</button>
+          <button id="btnCloseEditor" class="btn btn-secondary btn-sm" aria-label="Cerrar editor de rutina">✕ Cerrar</button>
         </div>
 
         <div class="form-group">
-          <label class="form-label">Nombre de la Rutina:</label>
+          <label for="routineNameInput" class="form-label">Nombre de la Rutina:</label>
           <input type="text" id="routineNameInput" class="form-control" placeholder="Ej: Rutina Hipertrofia 5 Días">
         </div>
 
@@ -185,9 +217,10 @@
     <!-- =================================================================== -->
     <!-- TAB 3: CATÁLOGO DE EJERCICIOS (Database) -->
     <!-- =================================================================== -->
-    <section id="tab-catalog" class="tab-content">
+    <section id="tab-catalog" class="tab-content" aria-label="Catálogo de Ejercicios">
       <div style="display: flex; gap: 8px; margin-bottom: 12px;">
         <div style="flex: 1;">
+          <label for="catalogSearch" class="visually-hidden">Buscar ejercicio</label>
           <input type="text" id="catalogSearch" class="form-control"
             placeholder="🔍 Buscar ejercicio (ej. Prensa, Sentadilla)...">
         </div>
@@ -197,7 +230,7 @@
         </button>
       </div>
 
-      <div class="filter-container" id="categoryFilters">
+      <div class="filter-container" id="categoryFilters" role="tablist" aria-label="Filtrar por grupo muscular">
         <button class="filter-pill active" data-cat="ALL">Todos</button>
         <button class="filter-pill" data-cat="Pierna">Pierna</button>
         <button class="filter-pill" data-cat="Pectoral">Pectoral</button>
@@ -216,7 +249,7 @@
     <!-- =================================================================== -->
     <!-- TAB 4: HISTORIAL Y REGISTROS -->
     <!-- =================================================================== -->
-    <section id="tab-history" class="tab-content">
+    <section id="tab-history" class="tab-content" aria-label="Historial de Entrenamientos">
       <div class="card">
         <div class="card-title">
           <span>📜 Historial de Entrenamientos</span>
@@ -234,11 +267,18 @@
     <!-- =================================================================== -->
     <!-- TAB 5: ANALÍTICA Y PROGRESO (Chart.js Dashboard) -->
     <!-- =================================================================== -->
-    <section id="tab-analytics" class="tab-content">
+    <section id="tab-analytics" class="tab-content" aria-label="Analítica y Progreso">
+      <!-- Period Filter Bar -->
+      <div class="filter-container" id="analyticsPeriodFilters" style="margin-bottom: 12px;">
+        <button class="filter-pill active" data-days="0">Todo el Historial</button>
+        <button class="filter-pill" data-days="30">Últimos 30 Días</button>
+        <button class="filter-pill" data-days="7">Últimos 7 Días</button>
+      </div>
+
       <!-- PRs Summary Card -->
       <div class="card">
         <div class="card-title">
-          <span>🏆 Récords Personales (PRs)</span>
+          <span>🏆 Récords Personales Efectivos (PRs)</span>
         </div>
         <div id="prsContainer" style="display: flex; gap: 8px; overflow-x: auto; padding-bottom: 4px;">
           <!-- Populated via JS -->
@@ -251,7 +291,7 @@
           <span>📈 Sobrecarga Progresiva</span>
         </div>
         <div class="form-group" style="margin-bottom: 10px;">
-          <label class="form-label">Seleccionar Ejercicio:</label>
+          <label for="analyticsExSelect" class="form-label">Seleccionar Ejercicio:</label>
           <select id="analyticsExSelect" class="form-control">
             <!-- Populated via JS -->
           </select>
@@ -264,7 +304,7 @@
       <!-- Weekly Volume Chart -->
       <div class="card">
         <div class="card-title">
-          <span>📊 Volumen Semanal (kg)</span>
+          <span>📊 Volumen por Sesión / Semana (kg)</span>
         </div>
         <div style="position: relative; height: 200px; width: 100%;">
           <canvas id="weeklyVolumeCanvas"></canvas>
@@ -285,22 +325,26 @@
     <!-- =================================================================== -->
     <!-- FLOATING REST TIMER BANNER -->
     <!-- =================================================================== -->
-    <div id="restTimerBanner" class="rest-timer-banner hidden">
+    <div id="restTimerBanner" class="rest-timer-banner hidden" role="timer" aria-live="off">
       <div class="rest-timer-info">
-        <div style="font-size: 11px; color: var(--text-muted); text-transform: uppercase;">Descanso</div>
+        <div style="font-size: 11px; color: var(--text-muted); text-transform: uppercase; display: flex; align-items: center; gap: 4px;">
+          <span>Descanso</span>
+          <span id="restPushStatusBadge" style="font-size: 10px; color: var(--accent-cyan);"></span>
+        </div>
         <div id="restTimerSeconds" class="rest-timer-seconds">60s</div>
       </div>
       <div class="rest-timer-controls">
-        <button id="btnRestMinus15" class="btn btn-secondary btn-sm">-15s</button>
-        <button id="btnRestPlus15" class="btn btn-secondary btn-sm">+15s</button>
-        <button id="btnRestSkip" class="btn btn-primary btn-sm">Saltar</button>
+        <button id="btnRestPushToggle" class="btn btn-secondary btn-sm" title="Activar alerta Push en segundo plano" aria-label="Activar alerta Push en segundo plano">🔔</button>
+        <button id="btnRestMinus15" class="btn btn-secondary btn-sm" aria-label="Restar 15 segundos al descanso">-15s</button>
+        <button id="btnRestPlus15" class="btn btn-secondary btn-sm" aria-label="Sumar 15 segundos al descanso">+15s</button>
+        <button id="btnRestSkip" class="btn btn-primary btn-sm" aria-label="Saltar tiempo de descanso">Saltar</button>
       </div>
     </div>
 
     <!-- =================================================================== -->
     <!-- BOTTOM NAVIGATION BAR -->
     <!-- =================================================================== -->
-    <nav class="bottom-nav">
+    <nav class="bottom-nav" aria-label="Navegación principal">
       <button class="nav-item active" data-tab="tab-train" aria-label="Sección Entrenar">
         <svg viewBox="0 0 24 24" aria-hidden="true">
           <path
@@ -341,12 +385,12 @@
     <!-- =================================================================== -->
     <!-- MODAL DE SELECCIÓN Y GESTIÓN DE PERFILES & AUTENTICACIÓN (PROFILE HUB) -->
     <!-- =================================================================== -->
-    <div id="profileModal" class="modal-overlay hidden">
+    <div id="profileModal" class="modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="profileModalTitle">
       <div class="profile-hub-card">
 
         <!-- Header Bar -->
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
-          <h3 style="font-family: var(--font-heading); font-size: 20px; font-weight: 800; color: #fff;">
+          <h3 id="profileModalTitle" style="font-family: var(--font-heading); font-size: 20px; font-weight: 800; color: #fff;">
             👤 Mi Perfil & Cuenta
           </h3>
           <button id="btnCloseProfileModal" class="btn btn-secondary btn-sm"
@@ -358,9 +402,10 @@
         <div id="loggedInDashboard" class="hidden">
           <!-- Active Profile Hero Card -->
           <div class="profile-avatar-hero">
-            <div id="profileHeroAvatar" class="profile-avatar-badge" title="Toca para cambiar avatar">👤</div>
+            <div id="profileHeroAvatar" class="profile-avatar-badge" title="Toca para cambiar avatar" role="button" tabindex="0" aria-label="Cambiar avatar de perfil">👤</div>
             <div style="flex: 1;">
               <div style="display: flex; align-items: center; gap: 8px;">
+                <label for="editProfileNameInput" class="visually-hidden">Nombre de perfil</label>
                 <input type="text" id="editProfileNameInput" class="form-control"
                   style="font-weight: 800; font-size: 16px; background: transparent; border: none; border-bottom: 1px dashed var(--accent-cyan); padding: 2px 4px; color: #fff; width: 140px;"
                   placeholder="Tu Nombre">
@@ -401,7 +446,7 @@
 
         <!-- STATE 2: AUTH GATEWAY (LOGIN / REGISTER / GUEST) -->
         <div id="authGatewayContainer">
-          <div class="auth-tabs-group">
+          <div class="auth-tabs-group" role="tablist">
             <button id="tabAuthLogin" class="auth-tab-btn active">🔑 Iniciar Sesión</button>
             <button id="tabAuthRegister" class="auth-tab-btn">✨ Crear Cuenta</button>
             <button id="tabAuthGuest" class="auth-tab-btn">👤 Modo Invitado</button>
@@ -410,9 +455,12 @@
           <!-- Auth Form for Login / Register -->
           <div id="authFormSection">
             <div id="authFormFields" style="display: flex; flex-direction: column; gap: 8px;">
-              <input type="text" id="authName" class="form-control hidden" placeholder="Nombre Completo">
-              <input type="email" id="authEmail" class="form-control" placeholder="Correo electrónico">
-              <input type="password" id="authPassword" class="form-control" placeholder="Contraseña">
+              <label for="authName" class="visually-hidden">Nombre Completo</label>
+              <input type="text" id="authName" class="form-control hidden" placeholder="Nombre Completo" autocomplete="name">
+              <label for="authEmail" class="visually-hidden">Correo electrónico</label>
+              <input type="email" id="authEmail" class="form-control" placeholder="Correo electrónico" autocomplete="email">
+              <label for="authPassword" class="visually-hidden">Contraseña</label>
+              <input type="password" id="authPassword" class="form-control" placeholder="Contraseña" autocomplete="current-password">
 
               <!-- Avatar Picker for Registration -->
               <div id="authRegisterAvatarGroup" class="hidden mt-1">
@@ -433,13 +481,13 @@
                 Iniciar Sesión con JWT
               </button>
             </div>
-            <div id="authStatusMessage" style="font-size: 11px; text-align: center; margin-top: 8px;"></div>
+            <div id="authStatusMessage" style="font-size: 11px; text-align: center; margin-top: 8px;" role="status" aria-live="polite"></div>
           </div>
 
           <!-- Guest Mode Details Box -->
           <div id="guestModeSection" class="hidden"
             style="background: var(--bg-input); border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 16px; text-align: center;">
-            <div style="font-size: 36px; margin-bottom: 8px;">👤</div>
+            <div style="font-size: 36px; margin-bottom: 8px;" aria-hidden="true">👤</div>
             <h4 style="font-family: var(--font-heading); color: #fff; font-size: 16px; margin-bottom: 6px;">Modo
               Invitado
               (Solo Dispositivo)</h4>
@@ -459,7 +507,7 @@
           <div style="display: flex; gap: 8px;">
             <button id="btnExportBackup" class="btn btn-secondary btn-sm" style="width: 50%;">📦 Exportar JSON</button>
             <button id="btnImportBackup" class="btn btn-secondary btn-sm" style="width: 50%;">📥 Importar JSON</button>
-            <input type="file" id="importFileInput" accept=".json" class="hidden">
+            <input type="file" id="importFileInput" accept=".json" class="hidden" aria-label="Seleccionar archivo JSON de respaldo">
           </div>
         </div>
 
@@ -467,22 +515,22 @@
     </div>
 
     <!-- Modal: Add Custom Exercise to DB -->
-    <div id="addExerciseModal" class="modal-overlay hidden">
+    <div id="addExerciseModal" class="modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="addExerciseModalTitle">
       <div class="modal-card">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
-          <h3 style="font-family: var(--font-heading); font-size: 18px; color: #fff; margin: 0;">⚡ Añadir Ejercicio a la
+          <h3 id="addExerciseModalTitle" style="font-family: var(--font-heading); font-size: 18px; color: #fff; margin: 0;">⚡ Añadir Ejercicio a la
             BD</h3>
-          <button id="btnCloseAddExerciseModal" class="btn btn-secondary btn-sm">✕</button>
+          <button id="btnCloseAddExerciseModal" class="btn btn-secondary btn-sm" aria-label="Cerrar modal de nuevo ejercicio">✕</button>
         </div>
 
         <div style="display: flex; flex-direction: column; gap: 10px;">
           <div class="form-group">
-            <label class="form-label">Nombre del Ejercicio:</label>
+            <label for="newExName" class="form-label">Nombre del Ejercicio:</label>
             <input type="text" id="newExName" class="form-control" placeholder="Ej. Sentadilla Búlgara en Smith">
           </div>
 
           <div class="form-group">
-            <label class="form-label">Grupo Muscular / Categoría:</label>
+            <label for="newExCategory" class="form-label">Grupo Muscular / Categoría:</label>
             <select id="newExCategory" class="form-control">
               <option value="Pierna">Pierna</option>
               <option value="Pectoral">Pectoral</option>
@@ -495,18 +543,18 @@
           </div>
 
           <div class="form-group">
-            <label class="form-label">Equipamiento:</label>
+            <label for="newExEquipment" class="form-label">Equipamiento:</label>
             <input type="text" id="newExEquipment" class="form-control"
               placeholder="Ej. Mancuernas, Barra, Máquina, Polea">
           </div>
 
           <div style="display: flex; gap: 10px;">
             <div class="form-group" style="flex: 1;">
-              <label class="form-label">Series base:</label>
-              <input type="number" id="newExSets" class="form-control" value="1" min="1">
+              <label for="newExSets" class="form-label">Series base:</label>
+              <input type="number" id="newExSets" class="form-control" value="3" min="1">
             </div>
             <div class="form-group" style="flex: 1;">
-              <label class="form-label">Reps base:</label>
+              <label for="newExReps" class="form-label">Reps base:</label>
               <input type="number" id="newExReps" class="form-control" value="12" min="1">
             </div>
           </div>
@@ -521,16 +569,17 @@
     <!-- =================================================================== -->
     <!-- MODAL: Cambiar Ejercicio en Entrenamiento Activo -->
     <!-- =================================================================== -->
-    <div id="swapExerciseModal" class="modal-overlay hidden">
+    <div id="swapExerciseModal" class="modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="swapModalTitle">
       <div class="modal-card card" style="max-width: 480px; width: 92%;">
         <div class="card-title">
-          <span>🔄 Cambiar Ejercicio</span>
-          <button id="btnCloseSwapModal" class="btn btn-secondary btn-sm">✕</button>
+          <span id="swapModalTitle">🔄 Cambiar Ejercicio</span>
+          <button id="btnCloseSwapModal" class="btn btn-secondary btn-sm" aria-label="Cerrar modal de cambio de ejercicio">✕</button>
         </div>
         <p style="font-size: 12px; color: var(--text-muted); margin-bottom: 12px;">
           Selecciona un nuevo ejercicio del catálogo para reemplazar el actual en tu sesión.
         </p>
 
+        <label for="swapSearchInput" class="visually-hidden">Buscar ejercicio sustituto</label>
         <input type="text" id="swapSearchInput" class="form-control mb-2" placeholder="Buscar ejercicio sustituto...">
 
         <div id="swapExerciseListContainer"
@@ -543,11 +592,11 @@
     <!-- =================================================================== -->
     <!-- MODAL: Editar Registro de Historial -->
     <!-- =================================================================== -->
-    <div id="editHistoryModal" class="modal-overlay hidden">
+    <div id="editHistoryModal" class="modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="editHistoryModalTitle">
       <div class="modal-card card" style="max-width: 500px; width: 92%;">
         <div class="card-title">
-          <span>✏️ Editar Entrenamiento Guardado</span>
-          <button id="btnCloseEditHistoryModal" class="btn btn-secondary btn-sm">✕</button>
+          <span id="editHistoryModalTitle">✏️ Editar Entrenamiento Guardado</span>
+          <button id="btnCloseEditHistoryModal" class="btn btn-secondary btn-sm" aria-label="Cerrar modal de edición de historial">✕</button>
         </div>
         <div id="editHistoryFormContent"
           style="display: flex; flex-direction: column; gap: 12px; max-height: 400px; overflow-y: auto; margin-top: 10px;">
@@ -562,7 +611,7 @@
     <!-- =================================================================== -->
     <!-- MODAL: Temporizador de Ejercicio por Tiempo -->
     <!-- =================================================================== -->
-    <div id="exerciseTimerModal" class="modal-overlay hidden">
+    <div id="exerciseTimerModal" class="modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="exTimerModalTitle">
       <div class="modal-card card" style="max-width: 360px; width: 88%; text-align: center;">
         <div class="card-title" style="justify-content: center;">
           <span id="exTimerModalTitle">⏱️ Temporizador de Ejercicio</span>
@@ -571,8 +620,8 @@
           style="font-size: 48px; font-weight: 900; color: var(--accent-cyan); margin: 16px 0; letter-spacing: 2px;">
           00:45</div>
         <div style="display: flex; gap: 8px; justify-content: center; margin-bottom: 12px;">
-          <button id="btnExTimerSub10" class="btn btn-secondary btn-sm">-10s</button>
-          <button id="btnExTimerAdd10" class="btn btn-secondary btn-sm">+10s</button>
+          <button id="btnExTimerSub10" class="btn btn-secondary btn-sm" aria-label="Restar 10 segundos">-10s</button>
+          <button id="btnExTimerAdd10" class="btn btn-secondary btn-sm" aria-label="Sumar 10 segundos">+10s</button>
         </div>
         <div style="display: flex; gap: 10px;">
           <button id="btnExTimerClose" class="btn btn-secondary btn-sm" style="flex: 1;">Cerrar</button>
@@ -585,14 +634,42 @@
     </div>
 
     <!-- =================================================================== -->
+    <!-- MODAL: Calculadora de Discos (Plate Calculator) -->
+    <!-- =================================================================== -->
+    <div id="plateCalculatorModal" class="modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="plateCalcTitle">
+      <div class="modal-card card" style="max-width: 420px; width: 92%;">
+        <div class="card-title">
+          <span id="plateCalcTitle">🧮 Calculadora de Discos por Lado</span>
+          <button id="btnClosePlateCalcModal" class="btn btn-secondary btn-sm" aria-label="Cerrar calculadora de discos">✕</button>
+        </div>
+        <div class="form-group">
+          <label for="plateTargetWeightInput" class="form-label">Peso Total Objetivo (kg):</label>
+          <input type="number" id="plateTargetWeightInput" class="form-control" value="60" step="2.5" min="0">
+        </div>
+        <div class="form-group">
+          <label for="plateBarWeightSelect" class="form-label">Peso de la Barra / Máquina:</label>
+          <select id="plateBarWeightSelect" class="form-control">
+            <option value="20">Barra Olímpica Estándar (20 kg)</option>
+            <option value="15">Barra Olímpica 15 kg</option>
+            <option value="10">Barra Z / Corta (10 kg)</option>
+            <option value="0">Sin Barra / Prensa (0 kg)</option>
+          </select>
+        </div>
+        <div id="plateCalcResultBox" style="background: rgba(0, 242, 254, 0.06); border: 1px solid var(--glass-border); border-radius: var(--radius-md); padding: 14px; text-align: center;">
+          <!-- Populated via JS -->
+        </div>
+      </div>
+    </div>
+
+    <!-- =================================================================== -->
     <!-- MODAL: Guía Visual Animada de Ejercicio -->
     <!-- =================================================================== -->
-    <div id="exerciseGuideModal" class="modal-overlay hidden">
+    <div id="exerciseGuideModal" class="modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="guideExTitle">
       <div class="modal-card card exercise-guide-card" style="max-width: 480px; width: 92%; padding: 20px;">
         <div class="card-title"
           style="margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center;">
           <div style="display: flex; align-items: center; gap: 8px;">
-            <span style="font-size: 22px;">👁️</span>
+            <span style="font-size: 22px;" aria-hidden="true">👁️</span>
             <div>
               <h3 id="guideExTitle"
                 style="font-family: var(--font-heading); font-size: 18px; font-weight: 800; color: #fff; margin: 0;">--
@@ -601,7 +678,8 @@
             </div>
           </div>
           <button id="btnCloseGuideModal" class="btn btn-secondary btn-sm"
-            style="border-radius: 50%; width: 32px; height: 32px; padding: 0; display: flex; align-items: center; justify-content: center;">✕</button>
+            style="border-radius: 50%; width: 32px; height: 32px; padding: 0; display: flex; align-items: center; justify-content: center;"
+            aria-label="Cerrar guía visual">✕</button>
         </div>
 
         <!-- Canvas / SVG Animation Viewer -->
@@ -613,10 +691,10 @@
 
           <!-- Animation Controls -->
           <div class="guide-controls">
-            <button id="btnGuidePrev" class="btn btn-secondary btn-sm" title="Cuadro anterior">⏮️</button>
+            <button id="btnGuidePrev" class="btn btn-secondary btn-sm" title="Cuadro anterior" aria-label="Cuadro anterior">⏮️</button>
             <button id="btnGuideToggle" class="btn btn-primary btn-sm" style="min-width: 90px; font-weight: 700;">⏸
               Pausa</button>
-            <button id="btnGuideNext" class="btn btn-secondary btn-sm" title="Cuadro siguiente">⏭️</button>
+            <button id="btnGuideNext" class="btn btn-secondary btn-sm" title="Cuadro siguiente" aria-label="Cuadro siguiente">⏭️</button>
           </div>
 
           <!-- Frame Dots -->
@@ -657,11 +735,30 @@
         <div
           style="margin-top: 14px; font-size: 10px; color: var(--text-muted); text-align: center; border-top: 1px dashed var(--border-color); padding-top: 8px;">
           🎨 Ilustraciones técnicas licenciadas bajo <a href="https://creativecommons.org/licenses/by-sa/4.0/"
-            target="_blank" style="color: var(--accent-blue); text-decoration: underline;">CC BY-SA 4.0</a> (Everkinetic
+            target="_blank" rel="noopener noreferrer" style="color: var(--accent-blue); text-decoration: underline;">CC BY-SA 4.0</a> (Everkinetic
           &amp; Bryl Lim).
         </div>
       </div>
     </div>
+
+    <!-- =================================================================== -->
+    <!-- MODAL DE CONFIRMACIÓN NO BLOQUEANTE -->
+    <!-- =================================================================== -->
+    <div id="customConfirmModal" class="modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="confirmModalTitle">
+      <div class="modal-card card" style="max-width: 380px; width: 90%; text-align: center;">
+        <h3 id="confirmModalTitle" style="font-family: var(--font-heading); font-size: 18px; color: #fff; margin-bottom: 8px;">Confirmar Acción</h3>
+        <p id="confirmModalMessage" style="font-size: 13px; color: var(--text-muted); margin-bottom: 18px; line-height: 1.4;"></p>
+        <div style="display: flex; gap: 10px;">
+          <button id="btnConfirmCancel" class="btn btn-secondary btn-sm" style="flex: 1;">Cancelar</button>
+          <button id="btnConfirmAccept" class="btn btn-primary btn-sm" style="flex: 1;">Confirmar</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- =================================================================== -->
+    <!-- CONTENEDOR DE TOASTS NO BLOQUEANTES -->
+    <!-- =================================================================== -->
+    <div id="appToastContainer" class="toast-stack-container" role="status" aria-live="polite"></div>
 
     <!-- =================================================================== -->
     <!-- TOAST: Notificación de Nueva Versión Disponible (Auto PWA Update) -->
@@ -679,6 +776,7 @@
     <script src="js/exercises_data.js"></script>
     <script src="js/analytics.js"></script>
     <script src="js/app.js"></script>
+  </main>
 </body>
 
 </html>

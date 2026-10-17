@@ -2,651 +2,18 @@ import hashlib
 import json
 import os
 import sqlite3
-import urllib.parse
+import time
+from datetime import datetime, timezone
 from typing import Dict, Any, Optional, List
 from fastapi import HTTPException
+from sqlalchemy import text
 from sqlalchemy.orm import Session
 from backend.auth import get_password_hash, verify_password, create_access_token
+from backend.seed_data import BACKEND_GUIDE_MAPPING, INITIAL_CATALOG_SEED
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DB_FILE = os.path.join(BASE_DIR, "gymtracker.db")
 
-BACKEND_GUIDE_MAPPING = {
-    "p1": {
-        "guideSlug": "seated-leg-curl",
-        "alternatives": [
-            "lying-leg-curl",
-            "stability-ball-hamstring-curl"
-        ]
-    },
-    "p2": {
-        "guideSlug": "leg-extension",
-        "alternatives": [
-            "sissy-squat",
-            "bodyweight-squat"
-        ]
-    },
-    "p3": {
-        "guideSlug": "lying-leg-curl",
-        "alternatives": [
-            "seated-leg-curl",
-            "nordic-hamstring-curl"
-        ]
-    },
-    "p4": {
-        "guideSlug": "leg-press",
-        "alternatives": [
-            "hack-squat",
-            "belt-squat",
-            "squat"
-        ]
-    },
-    "p5": {
-        "guideSlug": "smith-machine-squat",
-        "alternatives": [
-            "squat",
-            "hack-squat",
-            "smith-machine-split-squat"
-        ]
-    },
-    "p6": {
-        "guideSlug": "squat",
-        "alternatives": [
-            "front-squat",
-            "goblet-squat",
-            "smith-machine-squat"
-        ]
-    },
-    "p7": {
-        "guideSlug": "single-leg-romanian-deadlift",
-        "alternatives": [
-            "single-leg-glute-bridge",
-            "rack-pull"
-        ]
-    },
-    "p8": {
-        "guideSlug": "side-lying-leg-raise",
-        "alternatives": [
-            "cossack-squat",
-            "skater-squat"
-        ]
-    },
-    "p9": {
-        "guideSlug": "cossack-squat",
-        "alternatives": [
-            "side-lying-leg-raise"
-        ]
-    },
-    "p10": {
-        "guideSlug": "single-leg-calf-raise",
-        "alternatives": [
-            "leg-press-calf-raise"
-        ]
-    },
-    "p11": {
-        "guideSlug": "split-squat",
-        "alternatives": [
-            "bulgarian-split-squat",
-            "front-foot-elevated-split-squat"
-        ]
-    },
-    "p12": {
-        "guideSlug": "single-leg-glute-bridge",
-        "alternatives": [
-            "cable-pull-through",
-            "glute-focused-back-extension"
-        ]
-    },
-    "p13": {
-        "guideSlug": "single-leg-glute-bridge",
-        "alternatives": [
-            "cable-pull-through"
-        ]
-    },
-    "p14": {
-        "guideSlug": "single-leg-glute-bridge",
-        "alternatives": [
-            "cable-pull-through"
-        ]
-    },
-    "p15": {
-        "guideSlug": "wall-handstand-push-up",
-        "alternatives": [
-            "bodyweight-squat"
-        ]
-    },
-    "p16": {
-        "guideSlug": "single-leg-romanian-deadlift",
-        "alternatives": [
-            "rack-pull",
-            "cable-pull-through"
-        ]
-    },
-    "p17": {
-        "guideSlug": "single-leg-glute-bridge",
-        "alternatives": [
-            "glute-focused-back-extension"
-        ]
-    },
-    "p18": {
-        "guideSlug": "leg-press",
-        "alternatives": [
-            "hack-squat"
-        ]
-    },
-    "p19": {
-        "guideSlug": "bulgarian-split-squat",
-        "alternatives": [
-            "smith-machine-bulgarian-split-squat",
-            "split-squat"
-        ]
-    },
-    "c1": {
-        "guideSlug": "decline-bench-press",
-        "alternatives": [
-            "decline-dumbbell-press",
-            "decline-push-up"
-        ]
-    },
-    "c2": {
-        "guideSlug": "push-up",
-        "alternatives": [
-            "wide-push-up",
-            "incline-push-up",
-            "diamond-push-up"
-        ]
-    },
-    "c3": {
-        "guideSlug": "machine-chest-press",
-        "alternatives": [
-            "bench-press",
-            "incline-dumbbell-press"
-        ]
-    },
-    "c4": {
-        "guideSlug": "incline-bench-press",
-        "alternatives": [
-            "incline-dumbbell-press",
-            "incline-push-up"
-        ]
-    },
-    "c5": {
-        "guideSlug": "bench-press",
-        "alternatives": [
-            "dumbbell-bench-press",
-            "smith-machine-bench-press",
-            "push-up"
-        ]
-    },
-    "c6": {
-        "guideSlug": "cable-fly",
-        "alternatives": [
-            "pec-deck",
-            "push-up"
-        ]
-    },
-    "c7": {
-        "guideSlug": "incline-dumbbell-press",
-        "alternatives": [
-            "incline-bench-press",
-            "decline-dumbbell-press"
-        ]
-    },
-    "c8": {
-        "guideSlug": "pec-deck",
-        "alternatives": [
-            "cable-fly",
-            "machine-chest-press"
-        ]
-    },
-    "c9": {
-        "guideSlug": "machine-chest-press",
-        "alternatives": [
-            "bench-press"
-        ]
-    },
-    "c10": {
-        "guideSlug": "chest-dip",
-        "alternatives": [
-            "dip",
-            "bench-dip",
-            "weighted-dip"
-        ]
-    },
-    "b1": {
-        "guideSlug": "pull-up",
-        "alternatives": [
-            "chin-up",
-            "wide-grip-lat-pulldown",
-            "assisted-pull-up"
-        ]
-    },
-    "b2": {
-        "guideSlug": "lat-pulldown",
-        "alternatives": [
-            "wide-grip-lat-pulldown",
-            "banded-lat-pulldown",
-            "pull-up"
-        ]
-    },
-    "b3": {
-        "guideSlug": "close-grip-lat-pulldown",
-        "alternatives": [
-            "lat-pulldown",
-            "chin-up"
-        ]
-    },
-    "b4": {
-        "guideSlug": "machine-row",
-        "alternatives": [
-            "seated-row",
-            "t-bar-row",
-            "barbell-row"
-        ]
-    },
-    "b5": {
-        "guideSlug": "one-arm-dumbbell-row",
-        "alternatives": [
-            "dumbbell-bent-over-row",
-            "seated-row"
-        ]
-    },
-    "b6": {
-        "guideSlug": "lat-pulldown",
-        "alternatives": [
-            "machine-row"
-        ]
-    },
-    "b7": {
-        "guideSlug": "barbell-row",
-        "alternatives": [
-            "dumbbell-bent-over-row",
-            "pendlay-row",
-            "t-bar-row"
-        ]
-    },
-    "b8": {
-        "guideSlug": "back-extension",
-        "alternatives": [
-            "reverse-hyperextension",
-            "glute-focused-back-extension"
-        ]
-    },
-    "b9": {
-        "guideSlug": "seated-row",
-        "alternatives": [
-            "machine-row",
-            "chest-supported-row"
-        ]
-    },
-    "b10": {
-        "guideSlug": "lat-pulldown",
-        "alternatives": [
-            "wide-grip-lat-pulldown"
-        ]
-    },
-    "s1": {
-        "guideSlug": "machine-shoulder-press",
-        "alternatives": [
-            "overhead-press",
-            "seated-dumbbell-press"
-        ]
-    },
-    "s2": {
-        "guideSlug": "cable-lateral-raise",
-        "alternatives": [
-            "lateral-raise"
-        ]
-    },
-    "s3": {
-        "guideSlug": "overhead-press",
-        "alternatives": [
-            "push-press",
-            "standing-dumbbell-press",
-            "arnold-press"
-        ]
-    },
-    "s4": {
-        "guideSlug": "overhead-press",
-        "alternatives": [
-            "machine-shoulder-press"
-        ]
-    },
-    "s5": {
-        "guideSlug": "lateral-raise",
-        "alternatives": [
-            "cable-lateral-raise"
-        ]
-    },
-    "s6": {
-        "guideSlug": "front-raise",
-        "alternatives": [
-            "lateral-raise"
-        ]
-    },
-    "s7": {
-        "guideSlug": "upright-row",
-        "alternatives": [
-            "face-pull",
-            "banded-face-pull"
-        ]
-    },
-    "s8": {
-        "guideSlug": "rear-delt-fly",
-        "alternatives": [
-            "reverse-pec-deck",
-            "face-pull"
-        ]
-    },
-    "s9": {
-        "guideSlug": "seated-dumbbell-press",
-        "alternatives": [
-            "arnold-press",
-            "standing-dumbbell-press"
-        ]
-    },
-    "s10": {
-        "guideSlug": "dumbbell-shrug",
-        "alternatives": [
-            "upright-row"
-        ]
-    },
-    "s11": {
-        "guideSlug": "chest-supported-row",
-        "alternatives": [
-            "rear-delt-fly"
-        ]
-    },
-    "bi1": {
-        "guideSlug": "preacher-curl",
-        "alternatives": [
-            "spider-curl",
-            "ez-bar-curl"
-        ]
-    },
-    "bi2": {
-        "guideSlug": "bicep-curl",
-        "alternatives": [
-            "ez-bar-curl",
-            "drag-curl"
-        ]
-    },
-    "bi3": {
-        "guideSlug": "bicep-curl",
-        "alternatives": [
-            "incline-dumbbell-curl",
-            "hammer-curl"
-        ]
-    },
-    "bi4": {
-        "guideSlug": "cable-curl",
-        "alternatives": [
-            "bicep-curl"
-        ]
-    },
-    "bi5": {
-        "guideSlug": "concentration-curl",
-        "alternatives": [
-            "spider-curl",
-            "preacher-curl"
-        ]
-    },
-    "bi6": {
-        "guideSlug": "chin-up",
-        "alternatives": [
-            "pull-up",
-            "bicep-curl"
-        ]
-    },
-    "bi7": {
-        "guideSlug": "hammer-curl",
-        "alternatives": [
-            "rope-hammer-curl",
-            "bicep-curl"
-        ]
-    },
-    "bi8": {
-        "guideSlug": "cable-curl",
-        "alternatives": [
-            "bicep-curl"
-        ]
-    },
-    "bi9": {
-        "guideSlug": "wrist-curl",
-        "alternatives": [
-            "wrist-extension",
-            "reverse-curl"
-        ]
-    },
-    "bi10": {
-        "guideSlug": "preacher-curl",
-        "alternatives": [
-            "spider-curl"
-        ]
-    },
-    "tr1": {
-        "guideSlug": "single-arm-dumbbell-tricep-extension",
-        "alternatives": [
-            "overhead-tricep-extension"
-        ]
-    },
-    "tr2": {
-        "guideSlug": "overhead-tricep-extension",
-        "alternatives": [
-            "close-grip-bench-press"
-        ]
-    },
-    "tr3": {
-        "guideSlug": "overhead-tricep-extension",
-        "alternatives": [
-            "dumbbell-overhead-tricep-extension"
-        ]
-    },
-    "tr4": {
-        "guideSlug": "close-grip-bench-press",
-        "alternatives": [
-            "bench-press",
-            "dip"
-        ]
-    },
-    "tr5": {
-        "guideSlug": "dip",
-        "alternatives": [
-            "chest-dip",
-            "bench-dip",
-            "assisted-dip"
-        ]
-    },
-    "tr6": {
-        "guideSlug": "single-arm-dumbbell-tricep-extension",
-        "alternatives": [
-            "overhead-tricep-extension"
-        ]
-    },
-    "tr7": {
-        "guideSlug": "rope-tricep-pushdown",
-        "alternatives": [
-            "tricep-pushdown"
-        ]
-    },
-    "tr8": {
-        "guideSlug": "tricep-pushdown",
-        "alternatives": [
-            "rope-tricep-pushdown"
-        ]
-    },
-    "tr9": {
-        "guideSlug": "assisted-dip",
-        "alternatives": [
-            "dip",
-            "bench-dip"
-        ]
-    },
-    "tr10": {
-        "guideSlug": "overhead-tricep-extension",
-        "alternatives": [
-            "tricep-pushdown"
-        ]
-    },
-    "ab1": {
-        "guideSlug": "plank",
-        "alternatives": [
-            "side-plank-hip-dip"
-        ]
-    },
-    "ab2": {
-        "guideSlug": "crunch",
-        "alternatives": [
-            "weighted-crunch",
-            "cable-crunch"
-        ]
-    },
-    "ab3": {
-        "guideSlug": "hanging-leg-raise",
-        "alternatives": [
-            "lying-leg-raise"
-        ]
-    },
-    "ab4": {
-        "guideSlug": "side-plank-hip-dip",
-        "alternatives": [
-            "plank"
-        ]
-    },
-    "ab5": {
-        "guideSlug": "ab-wheel",
-        "alternatives": [
-            "crunch"
-        ]
-    },
-    "ab6": {
-        "guideSlug": "reverse-crunch",
-        "alternatives": [
-            "crunch",
-            "hanging-leg-raise"
-        ]
-    },
-    "ab7": {
-        "guideSlug": "crunch",
-        "alternatives": [
-            "weighted-crunch"
-        ]
-    },
-    "ab8": {
-        "guideSlug": "crunch",
-        "alternatives": [
-            "cable-crunch"
-        ]
-    },
-    "ab9": {
-        "guideSlug": "cable-crunch",
-        "alternatives": [
-            "crunch"
-        ]
-    },
-    "ab10": {
-        "guideSlug": "hanging-leg-raise",
-        "alternatives": [
-            "lying-leg-raise"
-        ]
-    }
-}
-
-INITIAL_CATALOG_SEED = [
-  # --- PIERNA ---
-  { "id": 'p1', "category": 'Pierna', "name": 'Leg Curl Sentado', "equipment": 'Máquina', "defaultSets": 1, "defaultReps": 15, "unit": 'reps' },
-  { "id": 'p2', "category": 'Pierna', "name": 'Leg Extensión', "equipment": 'Máquina', "defaultSets": 1, "defaultReps": 12, "unit": 'reps' },
-  { "id": 'p3', "category": 'Pierna', "name": 'Leg Curl Horizontal', "equipment": 'Máquina', "defaultSets": 1, "defaultReps": 12, "unit": 'reps' },
-  { "id": 'p4', "category": 'Pierna', "name": 'Prensa Para Pierna', "equipment": 'Máquina', "defaultSets": 1, "defaultReps": 12, "unit": 'reps' },
-  { "id": 'p5', "category": 'Pierna', "name": 'Sentadilla Smith', "equipment": 'Máquina Smith', "defaultSets": 1, "defaultReps": 12, "unit": 'reps' },
-  { "id": 'p6', "category": 'Pierna', "name": 'Sentadilla Barra Libre', "equipment": 'Barra', "defaultSets": 1, "defaultReps": 12, "unit": 'reps' },
-  { "id": 'p7', "category": 'Pierna', "name": 'Peso Muerto', "equipment": 'Barra', "defaultSets": 1, "defaultReps": 12, "unit": 'reps' },
-  { "id": 'p8', "category": 'Pierna', "name": 'Máquina de Abductores', "equipment": 'Máquina', "defaultSets": 1, "defaultReps": 15, "unit": 'reps' },
-  { "id": 'p9', "category": 'Pierna', "name": 'Máquina de Aductores', "equipment": 'Máquina', "defaultSets": 1, "defaultReps": 15, "unit": 'reps' },
-  { "id": 'p10', "category": 'Pierna', "name": 'Elevación de Talones', "equipment": 'Máquina/Mancuerna', "defaultSets": 1, "defaultReps": 15, "unit": 'reps' },
-  { "id": 'p11', "category": 'Pierna', "name": 'Desplantes', "equipment": 'Mancuernas', "defaultSets": 1, "defaultReps": 15, "unit": 'reps' },
-  { "id": 'p12', "category": 'Pierna', "name": 'Glúteo Polea', "equipment": 'Polea', "defaultSets": 1, "defaultReps": 15, "unit": 'reps' },
-  { "id": 'p13', "category": 'Pierna', "name": 'Patada Atrás', "equipment": 'Polea/Libre', "defaultSets": 1, "defaultReps": 15, "unit": 'reps' },
-  { "id": 'p14', "category": 'Pierna', "name": 'Puente', "equipment": 'Barra/Libre', "defaultSets": 1, "defaultReps": 15, "unit": 'reps' },
-  { "id": 'p15', "category": 'Pierna', "name": 'Sentadilla Isométrica', "equipment": 'Peso Corporal', "defaultSets": 1, "defaultReps": 30, "unit": 'seg' },
-  { "id": 'p16', "category": 'Pierna', "name": 'Peso Muerto Rumano', "equipment": 'Barra/Mancuerna', "defaultSets": 1, "defaultReps": 12, "unit": 'reps' },
-  { "id": 'p17', "category": 'Pierna', "name": 'Patada de Glúteo en Máquina', "equipment": 'Máquina', "defaultSets": 1, "defaultReps": 15, "unit": 'reps' },
-  { "id": 'p18', "category": 'Pierna', "name": 'Prensa Horizontal', "equipment": 'Máquina', "defaultSets": 1, "defaultReps": 15, "unit": 'reps' },
-  { "id": 'p19', "category": 'Pierna', "name": 'Lunge con Pierna Trasera Elevada', "equipment": 'Mancuernas', "defaultSets": 1, "defaultReps": 15, "unit": 'reps' },
-
-  # --- PECTORAL ---
-  { "id": 'c1', "category": 'Pectoral', "name": 'Declinado', "equipment": 'Barra', "defaultSets": 1, "defaultReps": 12, "unit": 'reps' },
-  { "id": 'c2', "category": 'Pectoral', "name": 'Lagartija', "equipment": 'Peso Corporal', "defaultSets": 1, "defaultReps": 15, "unit": 'reps' },
-  { "id": 'c3', "category": 'Pectoral', "name": 'Press Vertical', "equipment": 'Máquina', "defaultSets": 1, "defaultReps": 15, "unit": 'reps' },
-  { "id": 'c4', "category": 'Pectoral', "name": 'Press Inclinado con Barra', "equipment": 'Barra', "defaultSets": 1, "defaultReps": 15, "unit": 'reps' },
-  { "id": 'c5', "category": 'Pectoral', "name": 'Press Plano', "equipment": 'Barra', "defaultSets": 1, "defaultReps": 15, "unit": 'reps' },
-  { "id": 'c6', "category": 'Pectoral', "name": 'Cable Cruzado', "equipment": 'Polea', "defaultSets": 1, "defaultReps": 15, "unit": 'reps' },
-  { "id": 'c7', "category": 'Pectoral', "name": 'Press Inclinado Mancuernas', "equipment": 'Mancuernas', "defaultSets": 1, "defaultReps": 12, "unit": 'reps' },
-  { "id": 'c8', "category": 'Pectoral', "name": 'Pec Fly en Máquina', "equipment": 'Máquina', "defaultSets": 1, "defaultReps": 15, "unit": 'reps' },
-  { "id": 'c9', "category": 'Pectoral', "name": 'Press Articulado', "equipment": 'Máquina', "defaultSets": 1, "defaultReps": 12, "unit": 'reps' },
-  { "id": 'c10', "category": 'Pectoral', "name": 'Fondos Pectoral', "equipment": 'Paralelas', "defaultSets": 1, "defaultReps": 12, "unit": 'reps' },
-
-  # --- ESPALDA ---
-  { "id": 'b1', "category": 'Espalda', "name": 'Dominadas', "equipment": 'Barra Fija', "defaultSets": 1, "defaultReps": 12, "unit": 'reps' },
-  { "id": 'b2', "category": 'Espalda', "name": 'Jalón Polea Alta', "equipment": 'Polea', "defaultSets": 1, "defaultReps": 15, "unit": 'reps' },
-  { "id": 'b3', "category": 'Espalda', "name": 'Jalón Polea Cerrado', "equipment": 'Polea', "defaultSets": 1, "defaultReps": 12, "unit": 'reps' },
-  { "id": 'b4', "category": 'Espalda', "name": 'Remo Máquina', "equipment": 'Máquina', "defaultSets": 1, "defaultReps": 12, "unit": 'reps' },
-  { "id": 'b5', "category": 'Espalda', "name": 'Remo con Mancuerna', "equipment": 'Mancuerna', "defaultSets": 1, "defaultReps": 15, "unit": 'reps' },
-  { "id": 'b6', "category": 'Espalda', "name": 'Jalón con Máquina', "equipment": 'Máquina', "defaultSets": 1, "defaultReps": 12, "unit": 'reps' },
-  { "id": 'b7', "category": 'Espalda', "name": 'Remo con Barra', "equipment": 'Barra', "defaultSets": 1, "defaultReps": 15, "unit": 'reps' },
-  { "id": 'b8', "category": 'Espalda', "name": 'Hiper Extension', "equipment": 'Banco Romano', "defaultSets": 1, "defaultReps": 15, "unit": 'reps' },
-  { "id": 'b9', "category": 'Espalda', "name": 'Remo Articulado', "equipment": 'Máquina', "defaultSets": 1, "defaultReps": 12, "unit": 'reps' },
-  { "id": 'b10', "category": 'Espalda', "name": 'Lat Pulldown', "equipment": 'Polea', "defaultSets": 1, "defaultReps": 15, "unit": 'reps' },
-
-  # --- HOMBRO ---
-  { "id": 's1', "category": 'Hombro', "name": 'Hombro Press', "equipment": 'Máquina', "defaultSets": 1, "defaultReps": 15, "unit": 'reps' },
-  { "id": 's2', "category": 'Hombro', "name": 'Elevaciones Laterales en Polea', "equipment": 'Polea', "defaultSets": 1, "defaultReps": 15, "unit": 'reps' },
-  { "id": 's3', "category": 'Hombro', "name": 'Press Militar', "equipment": 'Barra', "defaultSets": 1, "defaultReps": 12, "unit": 'reps' },
-  { "id": 's4', "category": 'Hombro', "name": 'Press Tras Nuca Barra', "equipment": 'Barra', "defaultSets": 1, "defaultReps": 12, "unit": 'reps' },
-  { "id": 's5', "category": 'Hombro', "name": 'Elevación Late Manc.', "equipment": 'Mancuernas', "defaultSets": 1, "defaultReps": 15, "unit": 'reps' },
-  { "id": 's6', "category": 'Hombro', "name": 'Elevaciones Frontales Manc.', "equipment": 'Mancuernas', "defaultSets": 1, "defaultReps": 15, "unit": 'reps' },
-  { "id": 's7', "category": 'Hombro', "name": 'Remo de Pie', "equipment": 'Barra/Polea', "defaultSets": 1, "defaultReps": 15, "unit": 'reps' },
-  { "id": 's8', "category": 'Hombro', "name": 'Deltoides Posteriores Mancuernas', "equipment": 'Mancuernas', "defaultSets": 1, "defaultReps": 15, "unit": 'reps' },
-  { "id": 's9', "category": 'Hombro', "name": 'Press Mancuerna', "equipment": 'Mancuernas', "defaultSets": 1, "defaultReps": 12, "unit": 'reps' },
-  { "id": 's10', "category": 'Hombro', "name": 'Encogimiento Hombros Mancuerna', "equipment": 'Mancuernas', "defaultSets": 1, "defaultReps": 15, "unit": 'reps' },
-  { "id": 's11', "category": 'Hombro', "name": 'Remo en Banco Inclinado', "equipment": 'Mancuernas', "defaultSets": 1, "defaultReps": 12, "unit": 'reps' },
-
-  # --- BÍCEPS ---
-  { "id": 'bi1', "category": 'Bíceps', "name": 'Predicador en Máquina', "equipment": 'Máquina', "defaultSets": 1, "defaultReps": 15, "unit": 'reps' },
-  { "id": 'bi2', "category": 'Bíceps', "name": 'Bíceps Barra Agarre Abierto', "equipment": 'Barra Z', "defaultSets": 1, "defaultReps": 15, "unit": 'reps' },
-  { "id": 'bi3', "category": 'Bíceps', "name": 'Bíceps Mancuerna', "equipment": 'Mancuernas', "defaultSets": 1, "defaultReps": 15, "unit": 'reps' },
-  { "id": 'bi4', "category": 'Bíceps', "name": 'Bíceps Polea', "equipment": 'Polea', "defaultSets": 1, "defaultReps": 15, "unit": 'reps' },
-  { "id": 'bi5', "category": 'Bíceps', "name": 'Curl Concentrado', "equipment": 'Mancuerna', "defaultSets": 1, "defaultReps": 12, "unit": 'reps' },
-  { "id": 'bi6', "category": 'Bíceps', "name": 'Dominadas en Supinación', "equipment": 'Barra Fija', "defaultSets": 1, "defaultReps": 12, "unit": 'reps' },
-  { "id": 'bi7', "category": 'Bíceps', "name": 'Martillos', "equipment": 'Mancuernas', "defaultSets": 1, "defaultReps": 12, "unit": 'reps' },
-  { "id": 'bi8', "category": 'Bíceps', "name": 'Bíceps en Polea Alta', "equipment": 'Polea', "defaultSets": 1, "defaultReps": 15, "unit": 'reps' },
-  { "id": 'bi9', "category": 'Bíceps', "name": 'Antebrazo Barra o Mancuerna', "equipment": 'Barra/Mancuerna', "defaultSets": 1, "defaultReps": 15, "unit": 'reps' },
-  { "id": 'bi10', "category": 'Bíceps', "name": 'Bíceps Predicador', "equipment": 'Banco Scott', "defaultSets": 1, "defaultReps": 12, "unit": 'reps' },
-
-  # --- TRÍCEPS ---
-  { "id": 'tr1', "category": 'Tríceps', "name": 'Patada Tríceps con Polea', "equipment": 'Polea', "defaultSets": 1, "defaultReps": 15, "unit": 'reps' },
-  { "id": 'tr2', "category": 'Tríceps', "name": 'Press Francés', "equipment": 'Barra Z', "defaultSets": 1, "defaultReps": 15, "unit": 'reps' },
-  { "id": 'tr3', "category": 'Tríceps', "name": 'Copa Tríceps', "equipment": 'Mancuerna', "defaultSets": 1, "defaultReps": 12, "unit": 'reps' },
-  { "id": 'tr4', "category": 'Tríceps', "name": 'Press Cerrado', "equipment": 'Barra', "defaultSets": 1, "defaultReps": 12, "unit": 'reps' },
-  { "id": 'tr5', "category": 'Tríceps', "name": 'Fondos Tríceps', "equipment": 'Paralelas', "defaultSets": 1, "defaultReps": 12, "unit": 'reps' },
-  { "id": 'tr6', "category": 'Tríceps', "name": 'Patada de Tríceps', "equipment": 'Mancuerna', "defaultSets": 1, "defaultReps": 15, "unit": 'reps' },
-  { "id": 'tr7', "category": 'Tríceps', "name": 'Jalón con Cuerda', "equipment": 'Polea', "defaultSets": 1, "defaultReps": 15, "unit": 'reps' },
-  { "id": 'tr8', "category": 'Tríceps', "name": 'Jalón con Barra', "equipment": 'Polea', "defaultSets": 1, "defaultReps": 15, "unit": 'reps' },
-  { "id": 'tr9', "category": 'Tríceps', "name": 'Fondos en Máquina', "equipment": 'Máquina', "defaultSets": 1, "defaultReps": 12, "unit": 'reps' },
-  { "id": 'tr10', "category": 'Tríceps', "name": 'Press Francés en Máquina', "equipment": 'Máquina', "defaultSets": 1, "defaultReps": 12, "unit": 'reps' },
-
-  # --- ABDOMEN ---
-  { "id": 'ab1', "category": 'Abdomen', "name": 'Plancha Estática', "equipment": 'Peso Corporal', "defaultSets": 1, "defaultReps": 30, "unit": 'seg' },
-  { "id": 'ab2', "category": 'Abdomen', "name": 'Abdominal Banco', "equipment": 'Banco Declinado', "defaultSets": 1, "defaultReps": 20, "unit": 'reps' },
-  { "id": 'ab3', "category": 'Abdomen', "name": 'Abdominal Paralelas', "equipment": 'Paralelas', "defaultSets": 1, "defaultReps": 15, "unit": 'reps' },
-  { "id": 'ab4', "category": 'Abdomen', "name": 'Oblicuos', "equipment": 'Peso Corporal', "defaultSets": 1, "defaultReps": 20, "unit": 'reps' },
-  { "id": 'ab5', "category": 'Abdomen', "name": 'Rueda Abdominal', "equipment": 'Rueda', "defaultSets": 1, "defaultReps": 15, "unit": 'reps' },
-  { "id": 'ab6', "category": 'Abdomen', "name": 'Encogimiento Tronco y Piernas', "equipment": 'Peso Corporal', "defaultSets": 1, "defaultReps": 20, "unit": 'reps' },
-  { "id": 'ab7', "category": 'Abdomen', "name": 'Crunch Fitball', "equipment": 'Fitball', "defaultSets": 1, "defaultReps": 20, "unit": 'reps' },
-  { "id": 'ab8', "category": 'Abdomen', "name": 'Stability Crunches', "equipment": 'Fitball', "defaultSets": 1, "defaultReps": 20, "unit": 'reps' },
-  { "id": 'ab9', "category": 'Abdomen', "name": 'Crunch en Máquina', "equipment": 'Máquina', "defaultSets": 1, "defaultReps": 20, "unit": 'reps' },
-  { "id": 'ab10', "category": 'Abdomen', "name": 'Abcoaster', "equipment": 'Máquina', "defaultSets": 1, "defaultReps": 20, "unit": 'reps' }
-]
 
 class StorageRepository:
     """
@@ -658,75 +25,74 @@ class StorageRepository:
     def init_sqlite_db():
         """Initialize local SQLite tables for fallback storage."""
         try:
-            conn = sqlite3.connect(DB_FILE)
-            cursor = conn.cursor()
-            cursor.execute("""
-                CREATE TABLE IF NOT EXISTS users (
-                    id TEXT PRIMARY KEY,
-                    email TEXT UNIQUE NOT NULL,
-                    hashed_password TEXT NOT NULL,
-                    name TEXT NOT NULL,
-                    avatar TEXT DEFAULT '👤',
-                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-                )
-            """)
-            cursor.execute("""
-                CREATE TABLE IF NOT EXISTS profiles (
-                    id TEXT PRIMARY KEY,
-                    name TEXT NOT NULL,
-                    avatar TEXT NOT NULL
-                )
-            """)
-            cursor.execute("""
-                CREATE TABLE IF NOT EXISTS profile_data (
-                    profile_id TEXT PRIMARY KEY,
-                    routines_json TEXT,
-                    weights_json TEXT,
-                    history_json TEXT,
-                    active_session_json TEXT,
-                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-                )
-            """)
-            cursor.execute("""
-                CREATE TABLE IF NOT EXISTS exercises (
-                    id TEXT PRIMARY KEY,
-                    name TEXT NOT NULL,
-                    category TEXT NOT NULL,
-                    equipment TEXT DEFAULT 'General',
-                    default_sets INTEGER DEFAULT 1,
-                    default_reps INTEGER DEFAULT 12,
-                    unit TEXT DEFAULT 'reps',
-                    image_url TEXT,
-                    musclewiki_url TEXT,
-                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-                )
-            """)
+            with sqlite3.connect(DB_FILE) as conn:
+                cursor = conn.cursor()
+                cursor.execute("""
+                    CREATE TABLE IF NOT EXISTS users (
+                        id TEXT PRIMARY KEY,
+                        email TEXT UNIQUE NOT NULL,
+                        hashed_password TEXT NOT NULL,
+                        name TEXT NOT NULL,
+                        avatar TEXT DEFAULT '👤',
+                        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                    )
+                """)
+                cursor.execute("""
+                    CREATE TABLE IF NOT EXISTS profiles (
+                        id TEXT PRIMARY KEY,
+                        name TEXT NOT NULL,
+                        avatar TEXT NOT NULL
+                    )
+                """)
+                cursor.execute("""
+                    CREATE TABLE IF NOT EXISTS profile_data (
+                        profile_id TEXT PRIMARY KEY,
+                        routines_json TEXT,
+                        weights_json TEXT,
+                        history_json TEXT,
+                        active_session_json TEXT,
+                        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                    )
+                """)
+                cursor.execute("""
+                    CREATE TABLE IF NOT EXISTS exercises (
+                        id TEXT PRIMARY KEY,
+                        name TEXT NOT NULL,
+                        category TEXT NOT NULL,
+                        equipment TEXT DEFAULT 'General',
+                        default_sets INTEGER DEFAULT 3,
+                        default_reps INTEGER DEFAULT 12,
+                        unit TEXT DEFAULT 'reps',
+                        image_url TEXT,
+                        musclewiki_url TEXT,
+                        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                    )
+                """)
 
-            # Ensure SQLite schema migration if table already existed without new columns
-            cursor.execute("PRAGMA table_info(exercises)")
-            columns = [col[1] for col in cursor.fetchall()]
-            if 'unit' not in columns:
-                cursor.execute("ALTER TABLE exercises ADD COLUMN unit TEXT DEFAULT 'reps'")
-            if 'equipment' not in columns:
-                cursor.execute("ALTER TABLE exercises ADD COLUMN equipment TEXT DEFAULT 'General'")
-            if 'musclewiki_url' not in columns:
-                cursor.execute("ALTER TABLE exercises ADD COLUMN musclewiki_url TEXT")
+                # Ensure SQLite schema migration if table already existed without new columns
+                cursor.execute("PRAGMA table_info(exercises)")
+                columns = [col[1] for col in cursor.fetchall()]
+                if 'unit' not in columns:
+                    cursor.execute("ALTER TABLE exercises ADD COLUMN unit TEXT DEFAULT 'reps'")
+                if 'equipment' not in columns:
+                    cursor.execute("ALTER TABLE exercises ADD COLUMN equipment TEXT DEFAULT 'General'")
+                if 'musclewiki_url' not in columns:
+                    cursor.execute("ALTER TABLE exercises ADD COLUMN musclewiki_url TEXT")
 
-            cursor.execute("SELECT COUNT(*) FROM profiles")
-            if cursor.fetchone()[0] == 0:
-                cursor.execute("INSERT INTO profiles VALUES ('prof_guest', 'Invitado / Anónimo', '👤')")
+                cursor.execute("SELECT COUNT(*) FROM profiles")
+                if cursor.fetchone()[0] == 0:
+                    cursor.execute("INSERT INTO profiles VALUES ('prof_guest', 'Invitado / Anónimo', '👤')")
 
-            # Seed exercises in SQLite if empty
-            cursor.execute("SELECT COUNT(*) FROM exercises")
-            if cursor.fetchone()[0] == 0:
-                for item in INITIAL_CATALOG_SEED:
-                    cursor.execute("""
-                        INSERT INTO exercises (id, name, category, equipment, default_sets, default_reps, unit, image_url)
-                        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-                    """, (item['id'], item['name'], item['category'], item['equipment'], item['defaultSets'], item['defaultReps'], item['unit'], None))
+                # Seed exercises in SQLite if empty
+                cursor.execute("SELECT COUNT(*) FROM exercises")
+                if cursor.fetchone()[0] == 0:
+                    for item in INITIAL_CATALOG_SEED:
+                        cursor.execute("""
+                            INSERT INTO exercises (id, name, category, equipment, default_sets, default_reps, unit, image_url)
+                            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                        """, (item['id'], item['name'], item['category'], item['equipment'], item['defaultSets'], item['defaultReps'], item['unit'], None))
 
-            conn.commit()
-            conn.close()
+                conn.commit()
         except Exception as e:
             print(f"ℹ️ SQLite fallback initialization error: {e}")
 
@@ -743,7 +109,7 @@ class StorageRepository:
                 existing = db.query(UserModel).filter(UserModel.email == email_clean).first()
                 if existing:
                     raise HTTPException(status_code=400, detail="El correo electrónico ya está registrado.")
-                
+
                 user = UserModel(
                     id=u_id,
                     email=email_clean,
@@ -768,18 +134,21 @@ class StorageRepository:
 
         # SQLite Fallback Persistent Registration
         try:
-            conn = sqlite3.connect(DB_FILE)
-            cursor = conn.cursor()
-            cursor.execute("SELECT id FROM users WHERE LOWER(email) = ?", (email_clean,))
-            if cursor.fetchone():
-                conn.close()
-                raise HTTPException(status_code=400, detail="El correo electrónico ya está registrado.")
+            with sqlite3.connect(DB_FILE) as conn:
+                cursor = conn.cursor()
+                cursor.execute("SELECT id FROM users WHERE LOWER(email) = ?", (email_clean,))
+                if cursor.fetchone():
+                    raise HTTPException(status_code=400, detail="El correo electrónico ya está registrado.")
 
-            cursor.execute("INSERT INTO users (id, email, hashed_password, name, avatar) VALUES (?, ?, ?, ?, ?)",
-                           (u_id, email_clean, pwd_hash, name, avatar))
-            cursor.execute("INSERT OR REPLACE INTO profiles (id, name, avatar) VALUES (?, ?, ?)", (u_id, name, avatar))
-            conn.commit()
-            conn.close()
+                cursor.execute(
+                    "INSERT INTO users (id, email, hashed_password, name, avatar) VALUES (?, ?, ?, ?, ?)",
+                    (u_id, email_clean, pwd_hash, name, avatar)
+                )
+                cursor.execute(
+                    "INSERT OR REPLACE INTO profiles (id, name, avatar) VALUES (?, ?, ?)",
+                    (u_id, name, avatar)
+                )
+                conn.commit()
         except HTTPException:
             raise
         except Exception as e:
@@ -811,11 +180,13 @@ class StorageRepository:
 
         # SQLite Fallback Persistent Login
         try:
-            conn = sqlite3.connect(DB_FILE)
-            cursor = conn.cursor()
-            cursor.execute("SELECT id, email, hashed_password, name, avatar FROM users WHERE LOWER(email) = ?", (email_clean,))
-            row = cursor.fetchone()
-            conn.close()
+            with sqlite3.connect(DB_FILE) as conn:
+                cursor = conn.cursor()
+                cursor.execute(
+                    "SELECT id, email, hashed_password, name, avatar FROM users WHERE LOWER(email) = ?",
+                    (email_clean,)
+                )
+                row = cursor.fetchone()
 
             if row and verify_password(password, row[2]):
                 token = create_access_token({"sub": row[0], "email": row[1]})
@@ -836,7 +207,6 @@ class StorageRepository:
                 from backend.models import ExerciseModel
                 ex_models = db.query(ExerciseModel).order_by(ExerciseModel.category, ExerciseModel.name).all()
                 if not ex_models:
-                    # Seed Supabase PostgreSQL if empty
                     for item in INITIAL_CATALOG_SEED:
                         m = ExerciseModel(
                             id=item['id'], name=item['name'], category=item['category'],
@@ -852,9 +222,9 @@ class StorageRepository:
                     "name": ex.name,
                     "category": ex.category,
                     "equipment": ex.equipment or "General",
-                    "defaultSets": ex.default_sets or 1,
+                    "defaultSets": ex.default_sets or 3,
                     "defaultReps": ex.default_reps or 12,
-                    "unit": ex.weight_unit or "reps",
+                    "unit": ex.weight_unit if ex.weight_unit in ("reps", "seg", "min") else "reps",
                     "imageUrl": ex.image_url,
                     "guideSlug": BACKEND_GUIDE_MAPPING.get(ex.id, {}).get("guideSlug"),
                     "alternatives": BACKEND_GUIDE_MAPPING.get(ex.id, {}).get("alternatives", [])
@@ -863,18 +233,17 @@ class StorageRepository:
                 print(f"⚠️ Error leyendo ejercicios de Supabase: {e}")
 
         # SQLite Fallback
-        conn = sqlite3.connect(DB_FILE)
-        cursor = conn.cursor()
-        cursor.execute("SELECT id, name, category, equipment, default_sets, default_reps, unit, image_url FROM exercises ORDER BY category, name")
-        rows = cursor.fetchall()
-        conn.close()
+        with sqlite3.connect(DB_FILE) as conn:
+            cursor = conn.cursor()
+            cursor.execute("SELECT id, name, category, equipment, default_sets, default_reps, unit, image_url FROM exercises ORDER BY category, name")
+            rows = cursor.fetchall()
 
         return [{
             "id": r[0],
             "name": r[1],
             "category": r[2],
             "equipment": r[3] or "General",
-            "defaultSets": r[4] or 1,
+            "defaultSets": r[4] or 3,
             "defaultReps": r[5] or 12,
             "unit": r[6] or "reps",
             "imageUrl": r[7],
@@ -889,7 +258,7 @@ class StorageRepository:
         name = ex_dict.get('name', 'Nuevo Ejercicio')
         category = ex_dict.get('category', 'Pierna')
         equipment = ex_dict.get('equipment', 'General')
-        default_sets = ex_dict.get('defaultSets', 1)
+        default_sets = ex_dict.get('defaultSets', 3)
         default_reps = ex_dict.get('defaultReps', 12)
         unit = ex_dict.get('unit', 'reps')
 
@@ -916,14 +285,13 @@ class StorageRepository:
                 db.rollback()
 
         try:
-            conn = sqlite3.connect(DB_FILE)
-            cursor = conn.cursor()
-            cursor.execute("""
-                INSERT OR REPLACE INTO exercises (id, name, category, equipment, default_sets, default_reps, unit)
-                VALUES (?, ?, ?, ?, ?, ?, ?)
-            """, (ex_id, name, category, equipment, default_sets, default_reps, unit))
-            conn.commit()
-            conn.close()
+            with sqlite3.connect(DB_FILE) as conn:
+                cursor = conn.cursor()
+                cursor.execute("""
+                    INSERT OR REPLACE INTO exercises (id, name, category, equipment, default_sets, default_reps, unit)
+                    VALUES (?, ?, ?, ?, ?, ?, ?)
+                """, (ex_id, name, category, equipment, default_sets, default_reps, unit))
+                conn.commit()
         except Exception as e:
             print(f"ℹ️ SQLite save exercise error: {e}")
 
@@ -939,6 +307,7 @@ class StorageRepository:
         weights_history = {}
         workout_history = []
         active_session = None
+        updated_at_iso = None
 
         if has_supabase and db is not None:
             try:
@@ -951,7 +320,12 @@ class StorageRepository:
                 elif r_models:
                     routines = [{"id": r.id, "name": r.name, "days": r.days_data} for r in r_models]
 
-                w_models = db.query(WorkoutLogModel).filter(WorkoutLogModel.user_id == profile_id).order_by(WorkoutLogModel.created_at.desc()).all()
+                w_models = (
+                    db.query(WorkoutLogModel)
+                    .filter(WorkoutLogModel.user_id == profile_id)
+                    .order_by(WorkoutLogModel.created_at.desc())
+                    .all()
+                )
                 if w_models:
                     workout_history = [{
                         "id": w.id,
@@ -961,7 +335,8 @@ class StorageRepository:
                         "durationSeconds": w.duration_seconds,
                         "totalSets": w.total_sets,
                         "totalVolumeKg": w.total_volume_kg,
-                        "detailedExercises": w.detailed_exercises
+                        "detailedExercises": w.detailed_exercises,
+                        "completedAtIso": w.created_at.isoformat() if w.created_at else None
                     } for w in w_models]
 
                 if p_data:
@@ -969,6 +344,8 @@ class StorageRepository:
                     if not workout_history and p_data.history_json:
                         workout_history = json.loads(p_data.history_json)
                     active_session = json.loads(p_data.active_session_json) if p_data.active_session_json else None
+                    if p_data.updated_at:
+                        updated_at_iso = p_data.updated_at.isoformat()
 
                 if routines is not None or len(workout_history) > 0 or p_data:
                     return {
@@ -976,35 +353,40 @@ class StorageRepository:
                         "weightsHistory": weights_history,
                         "workoutHistory": workout_history,
                         "activeSession": active_session,
+                        "updatedAt": updated_at_iso,
                         "source": "supabase_primary"
                     }
             except Exception as e:
                 print(f"⚠️ Lectura Supabase no disponible (Usando SQLite fallback): {e}")
 
         # SQLite Fallback
-        conn = sqlite3.connect(DB_FILE)
-        cursor = conn.cursor()
-        cursor.execute("SELECT routines_json, weights_json, history_json, active_session_json FROM profile_data WHERE profile_id = ?", (profile_id,))
-        row = cursor.fetchone()
-        conn.close()
+        with sqlite3.connect(DB_FILE) as conn:
+            cursor = conn.cursor()
+            cursor.execute(
+                "SELECT routines_json, weights_json, history_json, active_session_json, updated_at FROM profile_data WHERE profile_id = ?",
+                (profile_id,)
+            )
+            row = cursor.fetchone()
 
         if row:
             routines = json.loads(row[0]) if row[0] is not None else None
             weights_history = json.loads(row[1]) if row[1] else {}
             workout_history = json.loads(row[2]) if row[2] else []
             active_session = json.loads(row[3]) if row[3] else None
+            updated_at_iso = row[4]
 
         return {
             "routines": routines,
             "weightsHistory": weights_history,
             "workoutHistory": workout_history,
             "activeSession": active_session,
+            "updatedAt": updated_at_iso,
             "source": "sqlite_fallback"
         }
 
     @staticmethod
     def sync_state(profile_id: str, payload: Any, db: Optional[Session] = None, has_supabase: bool = False) -> Dict[str, Any]:
-        """Synchronize profile state to primary or fallback database."""
+        """Synchronize profile state to primary or fallback database without N+1 queries."""
         routines_str = json.dumps(payload.routines) if payload.routines is not None else None
         weights_str = json.dumps(payload.weightsHistory) if payload.weightsHistory is not None else None
         history_str = json.dumps(payload.workoutHistory) if payload.workoutHistory is not None else None
@@ -1022,19 +404,27 @@ class StorageRepository:
 
                 if payload.routines is not None:
                     p_data.routines_json = routines_str
-                    # Delete routines from DB table if they are no longer in payload.routines (handles routine deletion)
-                    active_ids = {r.get('id') for r in payload.routines if isinstance(r, dict) and r.get('id')}
                     existing_routines = db.query(RoutineModel).filter(RoutineModel.user_id == profile_id).all()
-                    for er in existing_routines:
-                        if er.id not in active_ids:
-                            db.delete(er)
+                    existing_routines_map = {er.id: er for er in existing_routines}
+                    active_ids = {r.get('id') for r in payload.routines if isinstance(r, dict) and r.get('id')}
+
+                    for er_id, er_obj in existing_routines_map.items():
+                        if er_id not in active_ids:
+                            db.delete(er_obj)
 
                     for r in payload.routines:
-                        r_id = r.get('id')
+                        r_id = r.get('id') if isinstance(r, dict) else None
                         if r_id:
-                            r_model = db.query(RoutineModel).filter(RoutineModel.id == r_id).first()
+                            r_model = existing_routines_map.get(r_id)
                             if not r_model:
-                                r_model = RoutineModel(id=r_id, user_id=profile_id, name=r.get('name', 'Rutina'), days_data=r.get('days', []))
+                                r_model = db.query(RoutineModel).filter(RoutineModel.id == r_id).first()
+                            if not r_model:
+                                r_model = RoutineModel(
+                                    id=r_id,
+                                    user_id=profile_id,
+                                    name=r.get('name', 'Rutina'),
+                                    days_data=r.get('days', [])
+                                )
                                 db.add(r_model)
                             else:
                                 r_model.name = r.get('name', r_model.name)
@@ -1042,21 +432,20 @@ class StorageRepository:
 
                 if payload.weightsHistory is not None:
                     p_data.weights_json = weights_str
+
                 if payload.workoutHistory is not None:
                     p_data.history_json = history_str
-                    # Delete WorkoutLogModel entries from DB table if they are no longer in payload.workoutHistory
-                    active_history_ids = {w.get('id') for w in payload.workoutHistory if isinstance(w, dict) and w.get('id')}
                     existing_logs = db.query(WorkoutLogModel).filter(WorkoutLogModel.user_id == profile_id).all()
-                    for el in existing_logs:
-                        if el.id not in active_history_ids:
-                            db.delete(el)
+                    existing_logs_map = {el.id: el for el in existing_logs}
+                    active_history_ids = {w.get('id') for w in payload.workoutHistory if isinstance(w, dict) and w.get('id')}
 
-                p_data.active_session_json = active_str
+                    for el_id, el_obj in existing_logs_map.items():
+                        if el_id not in active_history_ids:
+                            db.delete(el_obj)
 
-                if payload.workoutHistory:
                     for w in payload.workoutHistory:
-                        w_id = w.get('id')
-                        if w_id:
+                        w_id = w.get('id') if isinstance(w, dict) else None
+                        if w_id and w_id not in existing_logs_map:
                             w_model = db.query(WorkoutLogModel).filter(WorkoutLogModel.id == w_id).first()
                             if not w_model:
                                 w_model = WorkoutLogModel(
@@ -1072,30 +461,32 @@ class StorageRepository:
                                 )
                                 db.add(w_model)
 
+                p_data.active_session_json = active_str
+                p_data.updated_at = datetime.now(timezone.utc)
+
                 db.commit()
                 supabase_success = True
             except Exception as e:
                 print(f"⚠️ Error sincronizando a Supabase (Respaldo SQLite activo): {e}")
                 db.rollback()
 
-        # Write to SQLite fallback only if Supabase failed or is unavailable (KISS / DRY)
         if not supabase_success:
             try:
-                conn = sqlite3.connect(DB_FILE)
-                cursor = conn.cursor()
-                cursor.execute("""
-                    INSERT OR REPLACE INTO profile_data (profile_id, routines_json, weights_json, history_json, active_session_json, updated_at)
-                    VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
-                """, (profile_id, routines_str, weights_str, history_str, active_str))
-                conn.commit()
-                conn.close()
+                with sqlite3.connect(DB_FILE) as conn:
+                    cursor = conn.cursor()
+                    cursor.execute("""
+                        INSERT OR REPLACE INTO profile_data (profile_id, routines_json, weights_json, history_json, active_session_json, updated_at)
+                        VALUES (?, ?, ?, ?, ?, ?)
+                    """, (profile_id, routines_str, weights_str, history_str, active_str, datetime.now(timezone.utc).isoformat()))
+                    conn.commit()
             except Exception as e:
                 print(f"ℹ️ SQLite sync fallback error: {e}")
 
         return {
             "status": "synced",
             "primary_database": "supabase" if supabase_success else "sqlite_fallback",
-            "profile_id": profile_id
+            "profile_id": profile_id,
+            "updatedAt": datetime.now(timezone.utc).isoformat()
         }
 
     @staticmethod
@@ -1104,7 +495,9 @@ class StorageRepository:
         if has_supabase and db is not None:
             try:
                 from backend.models import WorkoutLogModel, ProfileDataModel
-                w_model = db.query(WorkoutLogModel).filter(WorkoutLogModel.id == log_id, WorkoutLogModel.user_id == profile_id).first()
+                w_model = db.query(WorkoutLogModel).filter(
+                    WorkoutLogModel.id == log_id, WorkoutLogModel.user_id == profile_id
+                ).first()
                 if w_model:
                     db.delete(w_model)
 
@@ -1120,16 +513,18 @@ class StorageRepository:
                 db.rollback()
 
         try:
-            conn = sqlite3.connect(DB_FILE)
-            cursor = conn.cursor()
-            cursor.execute("SELECT history_json FROM profile_data WHERE profile_id = ?", (profile_id,))
-            row = cursor.fetchone()
-            if row and row[0]:
-                history = json.loads(row[0])
-                updated_history = [h for h in history if isinstance(h, dict) and h.get('id') != log_id]
-                cursor.execute("UPDATE profile_data SET history_json = ? WHERE profile_id = ?", (json.dumps(updated_history), profile_id))
-                conn.commit()
-            conn.close()
+            with sqlite3.connect(DB_FILE) as conn:
+                cursor = conn.cursor()
+                cursor.execute("SELECT history_json FROM profile_data WHERE profile_id = ?", (profile_id,))
+                row = cursor.fetchone()
+                if row and row[0]:
+                    history = json.loads(row[0])
+                    updated_history = [h for h in history if isinstance(h, dict) and h.get('id') != log_id]
+                    cursor.execute(
+                        "UPDATE profile_data SET history_json = ?, updated_at = ? WHERE profile_id = ?",
+                        (json.dumps(updated_history), datetime.now(timezone.utc).isoformat(), profile_id)
+                    )
+                    conn.commit()
         except Exception as e:
             print(f"ℹ️ SQLite delete history error: {e}")
 
@@ -1141,7 +536,9 @@ class StorageRepository:
         if has_supabase and db is not None:
             try:
                 from backend.models import WorkoutLogModel, ProfileDataModel
-                w_model = db.query(WorkoutLogModel).filter(WorkoutLogModel.id == log_id, WorkoutLogModel.user_id == profile_id).first()
+                w_model = db.query(WorkoutLogModel).filter(
+                    WorkoutLogModel.id == log_id, WorkoutLogModel.user_id == profile_id
+                ).first()
                 if w_model:
                     w_model.day_name = updated_record.get('dayName', w_model.day_name)
                     w_model.date_formatted = updated_record.get('dateFormatted', w_model.date_formatted)
@@ -1163,16 +560,18 @@ class StorageRepository:
                 db.rollback()
 
         try:
-            conn = sqlite3.connect(DB_FILE)
-            cursor = conn.cursor()
-            cursor.execute("SELECT history_json FROM profile_data WHERE profile_id = ?", (profile_id,))
-            row = cursor.fetchone()
-            if row and row[0]:
-                history = json.loads(row[0])
-                updated_history = [updated_record if (isinstance(h, dict) and h.get('id') == log_id) else h for h in history]
-                cursor.execute("UPDATE profile_data SET history_json = ? WHERE profile_id = ?", (json.dumps(updated_history), profile_id))
-                conn.commit()
-            conn.close()
+            with sqlite3.connect(DB_FILE) as conn:
+                cursor = conn.cursor()
+                cursor.execute("SELECT history_json FROM profile_data WHERE profile_id = ?", (profile_id,))
+                row = cursor.fetchone()
+                if row and row[0]:
+                    history = json.loads(row[0])
+                    updated_history = [updated_record if (isinstance(h, dict) and h.get('id') == log_id) else h for h in history]
+                    cursor.execute(
+                        "UPDATE profile_data SET history_json = ?, updated_at = ? WHERE profile_id = ?",
+                        (json.dumps(updated_history), datetime.now(timezone.utc).isoformat(), profile_id)
+                    )
+                    conn.commit()
         except Exception as e:
             print(f"ℹ️ SQLite update history error: {e}")
 
@@ -1200,16 +599,18 @@ class StorageRepository:
                 db.rollback()
 
         try:
-            conn = sqlite3.connect(DB_FILE)
-            cursor = conn.cursor()
-            if name and avatar:
-                cursor.execute("UPDATE profiles SET name = ?, avatar = ? WHERE id = ?", (name, avatar, user_id))
-            elif name:
-                cursor.execute("UPDATE profiles SET name = ? WHERE id = ?", (name, user_id))
-            elif avatar:
-                cursor.execute("UPDATE profiles SET avatar = ? WHERE id = ?", (avatar, user_id))
-            conn.commit()
-            conn.close()
+            with sqlite3.connect(DB_FILE) as conn:
+                cursor = conn.cursor()
+                if name and avatar:
+                    cursor.execute("UPDATE profiles SET name = ?, avatar = ? WHERE id = ?", (name, avatar, user_id))
+                    cursor.execute("UPDATE users SET name = ?, avatar = ? WHERE id = ?", (name, avatar, user_id))
+                elif name:
+                    cursor.execute("UPDATE profiles SET name = ? WHERE id = ?", (name, user_id))
+                    cursor.execute("UPDATE users SET name = ? WHERE id = ?", (name, user_id))
+                elif avatar:
+                    cursor.execute("UPDATE profiles SET avatar = ? WHERE id = ?", (avatar, user_id))
+                    cursor.execute("UPDATE users SET avatar = ? WHERE id = ?", (avatar, user_id))
+                conn.commit()
         except Exception as e:
             print(f"ℹ️ SQLite profile update error: {e}")
 
@@ -1221,17 +622,12 @@ class StorageRepository:
         Executes a lightweight query (SELECT 1) on Supabase PostgreSQL or local SQLite
         to register database activity and prevent Supabase free tier inactivity auto-pause.
         """
-        import time
-        from datetime import datetime, timezone
-        from sqlalchemy import text
-
         start_time = time.time()
         supabase_ping_ok = False
         details: Dict[str, Any] = {}
 
         if has_supabase and db is not None:
             try:
-                # Direct SQL execution registers activity in Supabase PostgreSQL
                 res = db.execute(text("SELECT 1")).scalar()
                 latency_ms = round((time.time() - start_time) * 1000, 2)
                 supabase_ping_ok = (res == 1)
@@ -1248,11 +644,10 @@ class StorageRepository:
 
         # Check SQLite fallback as well
         try:
-            conn = sqlite3.connect(DB_FILE)
-            cur = conn.cursor()
-            cur.execute("SELECT 1")
-            cur.fetchone()
-            conn.close()
+            with sqlite3.connect(DB_FILE) as conn:
+                cur = conn.cursor()
+                cur.execute("SELECT 1")
+                cur.fetchone()
             details["sqlite"] = {"status": "connected"}
         except Exception as e:
             details["sqlite"] = {"status": "error", "error": str(e)}
